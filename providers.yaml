@@ -1,0 +1,88 @@
+providers:
+  - id: zorocloud-us-cnc-pro
+    name: ZoroCloud US-CNC-Pro
+    url: https://zorocloud.com/index.php/store/us-cnc-pro
+    region: 洛杉矶
+    target_plans:
+      - US-CNC-Pro
+      - 2C4G
+    routes:
+      telecom: CN2/AS4809
+      unicom: AS9929
+      mobile: CMIN2/AS58807
+    notes: 三网精品候选；以商品页库存和价格为准。
+  - id: vmiss-la-tri-elite
+    name: VMISS LA TRI Elite
+    url: https://app.vmiss.com/store/us-la-tri-elite
+    region: 洛杉矶
+    target_plans:
+      - TRI Elite
+      - 2C4G
+    routes:
+      telecom: CN2/GIA候选
+      unicom: AS9929候选
+      mobile: CMIN2候选
+    notes: 常缺货，适合蹲补货。
+  - id: vmrack-l3-vps
+    name: VMRack L3 VPS
+    url: https://idc.vmrack.net/store/l3-vps
+    region: 洛杉矶
+    target_plans:
+      - 2C4G
+      - L3
+    routes:
+      telecom: CN2候选
+      unicom: AS9929候选
+      mobile: CMIN2候选
+    notes: 活动价更值得关注，正常月付通常偏贵。
+  - id: hostdare-cssd
+    name: HostDare CSSD CN2 GIA
+    url: https://bill.hostdare.com/store/premium-china-optimized-vps
+    region: 洛杉矶
+    target_plans:
+      - CSSD3
+      - 4GB
+    routes:
+      telecom: CN2 GIA/AS4809
+      unicom: AS9929
+      mobile: CMIN2/AS58807
+    notes: 线路描述正规；重点看库存和促销价格。
+  - id: dmit-lax
+    name: DMIT LAX
+    url: https://www.dmit.io/cart.php
+    region: 洛杉矶
+    target_plans:
+      - LAX
+      - 2C4G
+    routes:
+      telecom: 视具体产品线
+      unicom: 视具体产品线
+      mobile: 视具体产品线
+    notes: 区分 Pro/EB/T1，T1 通常不是中国优化线路。
+  - id: hostkvm
+    name: HostKvm 日本/美国优化 VPS
+    url: https://hostkvm.com/
+    region: 日本/洛杉矶
+    target_plans:
+      - 2核
+      - 4G
+      - CN2
+      - 软银
+    routes:
+      telecom: CN2/GIA候选
+      unicom: 软银/优化候选
+      mobile: 软银/优化候选
+    notes: 需以下单页实测为准，避免只看营销词。
+  - id: jtti-cn2
+    name: Jtti 美国 CN2 VPS
+    url: https://www.jtti.cc/
+    region: 洛杉矶
+    target_plans:
+      - CN2
+      - 2核
+      - 4G
+    routes:
+      telecom: CN2候选
+      unicom: CN2/直连候选
+      mobile: CN2/直连候选
+    notes: 关注年付活动和带宽限制。
