@@ -205,10 +205,17 @@ def request_with_budget(
             connect_timeout = remaining / 2
             timeout = (connect_timeout, remaining - connect_timeout)
         try:
+            _proxy_url = os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or ""
+            _proxies = {"http": _proxy_url, "https": os.getenv("HTTPS_PROXY") or os.getenv("https_proxy") or _proxy_url} if _proxy_url else None
             response = getter(
                 url,
-                headers={"User-Agent": "Mozilla/5.0 (compatible; honest-vps-monitor/3.0)"},
+                headers={
+                    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "en-US,en;q=0.9",
+                },
                 timeout=timeout,
+                proxies=_proxies,
                 allow_redirects=True,
             )
         except (requests.ConnectionError, requests.Timeout) as exc:
