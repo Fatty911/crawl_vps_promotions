@@ -57,10 +57,6 @@ jobs:
             --config-sha256 "$CONFIG_SHA" \
             --destination state
       - name: Build complete live round
-        env:
-          DMIT_PROXY_URL: ${{ secrets.DMIT_PROXY_URL }}
-          HTTP_PROXY: ${{ secrets.DMIT_PROXY_URL }}
-          HTTPS_PROXY: ${{ secrets.DMIT_PROXY_URL }}
         run: python -m vps_monitor.monitor --live --output
       - name: Upload early raw evidence
         if: always()
