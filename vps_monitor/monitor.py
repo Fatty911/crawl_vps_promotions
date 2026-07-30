@@ -56,7 +56,36 @@ class FetchResult:
 
 
 def load_config(path: Path = CONFIG_PATH) -> dict[str, Any]:
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+    """Load and validate provider configuration.
+
+    Raises ValueError on: empty/missing providers, missing id/name/url,
+    duplicate id, duplicate url, or non-http(s) URL.
+    """
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(config, dict) or not config.get("providers"):
+        raise ValueError("providers list is empty or missing")
+    providers = config["providers"]
+    if not isinstance(providers, list) or len(providers) == 0:
+        raise ValueError("providers list is empty or missing")
+    seen_ids: set[str] = set()
+    seen_urls: set[str] = set()
+    for idx, prov in enumerate(providers):
+        if not isinstance(prov, dict):
+            raise ValueError(f"provider at index {idx} is not a mapping")
+        for field in ("id", "name", "url"):
+            if not prov.get(field):
+                raise ValueError(f"provider at index {idx} missing required field: {field}")
+        pid = prov["id"]
+        url = prov["url"]
+        if pid in seen_ids:
+            raise ValueError(f"duplicate provider id: {pid}")
+        if url in seen_urls:
+            raise ValueError(f"duplicate provider url: {url}")
+        if not url.startswith(("http://", "https://")):
+            raise ValueError(f"provider url must be http(s): {url}")
+        seen_ids.add(pid)
+        seen_urls.add(url)
+    return config
 
 
 def fetch_with_requests(url: str, timeout: int) -> FetchResult:
@@ -154,6 +183,17 @@ def classify_status(text: str, error: str | None) -> str:
     return "需人工复核"
 
 
+def validate_records_for_publish(records: list[dict[str, Any]]) -> None:
+    """Ensure at least one record succeeded before overwriting Pages.
+
+    Raises RuntimeError when records is empty or every record has status 抓取失败.
+    """
+    if not records:
+        raise RuntimeError("refusing to publish: no records produced")
+    if all(r.get("status") == "抓取失败" for r in records):
+        raise RuntimeError("refusing to publish: all providers failed to fetch")
+
+
 def build_records(config: dict[str, Any]) -> list[dict[str, Any]]:
     records: list[dict[str, Any]] = []
     checked_at = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
@@ -243,6 +283,7 @@ def main() -> None:
     args = parser.parse_args()
     records = build_records(load_config(args.config))
     if args.output:
+        validate_records_for_publish(records)
         write_outputs(records)
     print(json.dumps(records, ensure_ascii=False, indent=2))
 
