@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>VPS 优惠监控</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header><h1>VPS 优惠监控</h1><p id="batch-summary">正在读取本轮批次…</p></header>
+  <section id="state" data-state="loading" aria-live="polite">loading</section>
+  <section class="filters" aria-label="筛选">
+    <label>服务商<select id="provider-filter"><option value="">全部</option></select></label>
+    <label>状态<select id="outcome-filter"><option value="">全部</option></select></label>
+    <label>地区<input id="region-filter" type="search" placeholder="地区"></label>
+    <label>币种<select id="currency-filter"><option value="">全部</option></select></label>
+    <label>账期<select id="billing-filter"><option value="">全部</option></select></label>
+    <label>库存<select id="availability-filter"><option value="">全部</option></select></label>
+    <label>排序<select id="sort-order"><option value="updated">更新时间</option><option value="monthly">同币种月化</option><option value="amount">原始金额</option></select></label>
+  </section>
+  <main>
+    <div id="cards" class="cards"></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>服务商</th><th>套餐</th><th>地区</th><th>状态</th><th>原价/周期</th><th>同币种月化</th><th>库存</th><th>原因</th></tr></thead>
+        <tbody id="status-body"></tbody>
+      </table>
+    </div>
+    <section class="history-panel" aria-label="历史">
+      <button id="history-load" type="button">按需加载历史</button>
+      <ol id="history-list"></ol>
+      <div class="history-pager">
+        <button id="history-prev" type="button" disabled>上一页</button>
+        <span id="history-page">未加载</span>
+        <button id="history-next" type="button" disabled>下一页</button>
+      </div>
+    </section>
+  </main>
+  <script src="app.js" defer></script>
+</body>
+</html>

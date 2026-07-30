@@ -1,88 +1,160 @@
-providers:
+config_revision: 4
+retired_task_ids: []
+target_defaults: &target_defaults
+  lifecycle: active
+  expected_billing_periods: [monthly, quarterly, yearly]
+targets:
   - id: zorocloud-us-cnc-pro
-    name: ZoroCloud US-CNC-Pro
+    <<: *target_defaults
+    priority: 10
+    expected_domains: [zorocloud.com]
+    expected_currencies: [USD]
+    provider: ZoroCloud
+    plan_name: US-CNC-Pro
+    plan_tokens: [US-CNC-Pro, 2C4G]
     url: https://zorocloud.com/index.php/store/us-cnc-pro
-    region: 洛杉矶
-    target_plans:
-      - US-CNC-Pro
-      - 2C4G
-    routes:
-      telecom: CN2/AS4809
-      unicom: AS9929
-      mobile: CMIN2/AS58807
-    notes: 三网精品候选；以商品页库存和价格为准。
-  - id: vmiss-la-tri-elite
-    name: VMISS LA TRI Elite
-    url: https://app.vmiss.com/store/us-la-tri-elite
-    region: 洛杉矶
-    target_plans:
-      - TRI Elite
-      - 2C4G
-    routes:
-      telecom: CN2/GIA候选
-      unicom: AS9929候选
-      mobile: CMIN2候选
-    notes: 常缺货，适合蹲补货。
-  - id: vmrack-l3-vps
-    name: VMRack L3 VPS
-    url: https://idc.vmrack.net/store/l3-vps
-    region: 洛杉矶
-    target_plans:
-      - 2C4G
-      - L3
-    routes:
-      telecom: CN2候选
-      unicom: AS9929候选
-      mobile: CMIN2候选
-    notes: 活动价更值得关注，正常月付通常偏贵。
-  - id: hostdare-cssd
-    name: HostDare CSSD CN2 GIA
-    url: https://bill.hostdare.com/store/premium-china-optimized-vps
-    region: 洛杉矶
-    target_plans:
-      - CSSD3
-      - 4GB
-    routes:
-      telecom: CN2 GIA/AS4809
-      unicom: AS9929
-      mobile: CMIN2/AS58807
-    notes: 线路描述正规；重点看库存和促销价格。
-  - id: dmit-lax
-    name: DMIT LAX
-    url: https://www.dmit.io/cart.php
-    region: 洛杉矶
-    target_plans:
-      - LAX
-      - 2C4G
-    routes:
-      telecom: 视具体产品线
-      unicom: 视具体产品线
-      mobile: 视具体产品线
-    notes: 区分 Pro/EB/T1，T1 通常不是中国优化线路。
-  - id: hostkvm
-    name: HostKvm 日本/美国优化 VPS
-    url: https://hostkvm.com/
-    region: 日本/洛杉矶
-    target_plans:
-      - 2核
-      - 4G
-      - CN2
-      - 软银
-    routes:
-      telecom: CN2/GIA候选
-      unicom: 软银/优化候选
-      mobile: 软银/优化候选
-    notes: 需以下单页实测为准，避免只看营销词。
-  - id: jtti-cn2
-    name: Jtti 美国 CN2 VPS
-    url: https://www.jtti.cc/
-    region: 洛杉矶
-    target_plans:
-      - CN2
-      - 2核
-      - 4G
-    routes:
-      telecom: CN2候选
-      unicom: CN2/直连候选
-      mobile: CN2/直连候选
-    notes: 关注年付活动和带宽限制。
+    region: US
+    provider_claimed_routes: [CN2, CUG, CMIN2]
+  - id: zorocloud-us-9929-pro
+    <<: *target_defaults
+    priority: 20
+    expected_domains: [zorocloud.com]
+    expected_currencies: [USD]
+    provider: ZoroCloud
+    plan_name: US-9929-Pro
+    plan_tokens: [US-9929-Pro, 2C4G]
+    url: https://zorocloud.com/index.php/store/us-9929-pro
+    region: US
+    provider_claimed_routes: [AS9929]
+  - id: zorocloud-jp-cn2-pro
+    <<: *target_defaults
+    priority: 30
+    expected_domains: [zorocloud.com]
+    expected_currencies: [USD]
+    provider: ZoroCloud
+    plan_name: JP-CN2-Pro
+    plan_tokens: [JP-CN2-Pro, 2C4G]
+    url: https://zorocloud.com/index.php/store/jp-cn2-pro
+    region: JP
+    provider_claimed_routes: [CN2]
+  - id: hostdare-cssd3
+    <<: *target_defaults
+    priority: 40
+    expected_domains: [bill.hostdare.com]
+    expected_currencies: [USD]
+    provider: HostDare
+    plan_name: CSSD3
+    plan_tokens: [CSSD3, 4GB, 100GB]
+    url: https://bill.hostdare.com/store/premium-china-optimized-nvme-kvm
+    region: US
+    provider_claimed_routes: [CN2 GIA]
+  - id: hostdare-camd3
+    <<: *target_defaults
+    priority: 50
+    expected_domains: [bill.hostdare.com]
+    expected_currencies: [USD]
+    provider: HostDare
+    plan_name: CAMD3
+    plan_tokens: [CAMD3, 4GB]
+    url: https://bill.hostdare.com/store/premium-china-optimized-amd-kvm-vps-usa
+    region: US
+    provider_claimed_routes: [CN2 GIA]
+  - id: bandwagon-osaka-40g
+    <<: *target_defaults
+    priority: 60
+    expected_domains: [bandwagonhost.com]
+    expected_currencies: [USD]
+    provider: BandwagonHost
+    plan_name: SPECIAL 40G KVM PROMO V5 - OSAKA CN2 GIA VPS
+    plan_tokens: [SPECIAL 40G KVM PROMO V5, OSAKA CN2 GIA VPS, 40 GB]
+    url: https://bandwagonhost.com/cart.php?productFilter=2
+    region: JP
+    provider_claimed_routes: [CN2 GIA, China Unicom, China Mobile]
+  - id: jtti-us-cn2
+    <<: *target_defaults
+    priority: 70
+    expected_domains: [jtti.cc]
+    expected_currencies: [USD, CNY]
+    provider: Jtti
+    plan_name: U.S.ecs 标准
+    plan_tokens: [U.S.ecs 标准, 2核, 4GB, 50GB, CN2]
+    url: https://www.jtti.cc/zh/usa_ecs.html
+    region: US
+    provider_claimed_routes: [CN2 GIA, CUG, CMI]
+  - id: jtti-jp-optimized
+    <<: *target_defaults
+    priority: 80
+    expected_domains: [jtti.cc]
+    expected_currencies: [USD, CNY]
+    provider: Jtti
+    plan_name: JPecs 标准
+    plan_tokens: [JPecs 标准, 2核, 4GB, 50GB, 中国优化]
+    url: https://www.jtti.cc/zh/jp_ecs.html
+    region: JP
+    provider_claimed_routes: [中国优化, CMI, CUG]
+  - id: racknerd-4gb-special
+    <<: *target_defaults
+    priority: 90
+    expected_domains: [my.racknerd.com]
+    expected_currencies: [USD]
+    provider: RackNerd
+    plan_name: 4GB RAM KVM VPS
+    plan_tokens: [4GB RAM KVM VPS, 4x vCPU, 55 GB SSD]
+    url: https://my.racknerd.com/index.php?rp=/store/august-special-promotions
+    region: US
+    provider_claimed_routes: [BGP]
+  - id: cloudcone-ssd-vps-4
+    <<: *target_defaults
+    priority: 100
+    expected_domains: [app.cloudcone.com]
+    expected_currencies: [USD]
+    provider: CloudCone
+    plan_name: SSD-VPS-4
+    plan_tokens: [SSD-VPS-4, 4 TB]
+    url: https://app.cloudcone.com/vps/358/create?token=ssd-vps-4
+    region: US
+    provider_claimed_routes: [BGP]
+  - id: buyvm-slice4096
+    <<: *target_defaults
+    priority: 110
+    expected_domains: [buyvm.net]
+    expected_currencies: [USD]
+    provider: BuyVM
+    plan_name: SLICE 4096
+    plan_tokens: [SLICE 4096, 4096 MB, 80 GB SSD]
+    url: https://buyvm.net/kvm-dedicated-server-slices
+    region: US/EU
+    provider_claimed_routes: [BGP]
+  - id: greencloud-budgetkvmhk2-3
+    <<: *target_defaults
+    priority: 120
+    expected_domains: [greencloudvps.com]
+    expected_currencies: [USD]
+    provider: GreenCloud
+    plan_name: BudgetKVMHK2-3
+    plan_tokens: [BudgetKVMHK2-3, 8192MB RAM, 60GB SSD]
+    url: https://greencloudvps.com/billing/store/budget-kvm-sale?language=english
+    region: HK
+    provider_claimed_routes: [BGP]
+  - id: layerstack-r108
+    <<: *target_defaults
+    priority: 130
+    expected_domains: [layerstack.com]
+    expected_currencies: [USD]
+    provider: LayerStack
+    plan_name: R108
+    plan_tokens: [R108, 4GiB, 2 vCPU, 150GiB]
+    url: https://www.layerstack.com/en/printable-cloud-servers/hk/standard
+    region: HK
+    provider_claimed_routes: [CN2 China Direct Route]
+  - id: lisahost-us-9929-annual
+    <<: *target_defaults
+    priority: 140
+    expected_domains: [lisahost.com]
+    expected_currencies: [CNY]
+    provider: LisaHost
+    plan_name: 美国9929精品网 - 非美国原生ip
+    plan_tokens: [美国9929精品网 - 非美国原生ip, 1核, 1G, 10G SSD]
+    url: https://lisahost.com/cart.php?gid=29
+    region: US
+    provider_claimed_routes: [AS9929]
