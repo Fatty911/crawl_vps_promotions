@@ -55,6 +55,23 @@ def test_build_restores_state_tests_early_evidence_then_structural_gate_and_page
     assert "gh issue close" in raw
 
 
+def test_live_crawl_explicitly_bypasses_runner_proxy():
+    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    step = next(
+        step
+        for step in workflow["jobs"]["build"]["steps"]
+        if step.get("name") == "Build complete live round"
+    )
+    assert step["env"] == {
+        "HTTP_PROXY": "",
+        "HTTPS_PROXY": "",
+        "ALL_PROXY": "",
+        "http_proxy": "",
+        "https_proxy": "",
+        "all_proxy": "",
+    }
+
+
 def test_action_refs_follow_official_major_and_maintained_third_party_allowlist():
     workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     for ref in _uses(workflow):
