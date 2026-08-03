@@ -23,12 +23,15 @@ site/data/status.json          精确 14 条本轮状态
 site/data/prices.json          仅本轮明确 in_stock success
 site/data/price_history.json   180 天追加事件
 site/data/summary.json         结果守恒摘要
+site/data/live-evidence.json   有界脱敏的运行证据
 site/data/batch.json           schema v4 完整 envelope
 site/manifest.json             batch/SHA/config 与文件摘要
 site/audit.json                结构门、产品门、fingerprint
 ```
 
 部署前结构门要求 v4、精确 14 个唯一任务、状态守恒、SHA/config/file hash 一致，且非成功记录无 offer。结构有效但 live 被阻断时可发布真实状态。
+
+`live-evidence.json` 只保留任务、服务商、HTTP 状态、脱敏 origin、固定枚举、有限原因码、尝试次数和延迟；不写入 query、凭据、路径、响应正文、请求头或代理节点。envelope 的 `evidence_sha256` 对应这份文件，结构门和产品门都会重新校验它。
 
 部署后通过正常 TLS 拉取公开 manifest 并逐文件核验。产品门要求至少 8 个不同 `task_id` 同时为本轮 live、真实同卡、明确 `in_stock`、具备稳定 `offer_id` 和官方 URL。8 个 success 中只要一个售罄、重复或证据不完整，就不能按 8 条计数。失败时 workflow 红并按 fingerprint 告警，不生成合格 Release。
 

@@ -10,6 +10,18 @@ from vps_monitor.audit import (
     verify_file_manifest,
 )
 from vps_monitor.contracts import build_envelope
+from vps_monitor.monitor import (
+    TargetResult,
+    build_batch_envelope,
+    build_live_evidence,
+    build_public_data,
+    evidence_sha256,
+    load_config,
+    load_targets,
+    publish_site,
+    quality_gate,
+    structure_gate,
+)
 from scripts.post_deploy_verify import compare_manifests
 
 
@@ -161,3 +173,50 @@ def test_fixture_output_cannot_pass_structure_or_product_cli_gates(tmp_path):
             text=True,
         )
         assert checked.returncode == 1
+
+
+def test_live_evidence_hash_is_bound_to_published_file_and_rejects_tampering(tmp_path, monkeypatch):
+    targets = load_targets(load_config())
+    results = [
+        TargetResult(
+            target=target,
+            outcome="blocked",
+            offer=None,
+            http_status=403,
+            final_url=target.url,
+            method="requests",
+            block_reason="http_403",
+            attempts=1,
+            latency_ms=10,
+            checked_at="2026-07-30T00:00:00+00:00",
+        )
+        for target in targets
+    ]
+    public = build_public_data(results, targets, mode="live")
+    evidence = build_live_evidence(results, mode="live")
+    envelope = build_batch_envelope(
+        public,
+        targets,
+        mode="live",
+        run_id="2",
+        run_attempt="1",
+        source_sha="a" * 40,
+        config_sha256="b" * 64,
+        started_at="2026-07-30T00:00:00Z",
+        finished_at="2026-07-30T00:01:00Z",
+        evidence=evidence,
+    )
+    report = audit_envelope(envelope, [target.id for target in targets])
+    publish_site(public, tmp_path, evidence=evidence, envelope=envelope, audit_report=report)
+    assert structure_gate(tmp_path, [target.id for target in targets])
+    monkeypatch.setattr("vps_monitor.monitor.product_quality_gate", lambda prices: True)
+    assert quality_gate(tmp_path)
+
+    tampered = json.loads((tmp_path / "data/live-evidence.json").read_text(encoding="utf-8"))
+    tampered["tasks"][0]["latency_ms"] += 1
+    assert evidence_sha256(tampered) != envelope["evidence_sha256"]
+    (tmp_path / "data/live-evidence.json").write_text(
+        json.dumps(tampered, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    assert not structure_gate(tmp_path, [target.id for target in targets])
+    assert not quality_gate(tmp_path)

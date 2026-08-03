@@ -14,8 +14,10 @@ from vps_monitor.monitor import (
     ProviderCircuitBreaker,
     RequestLimiter,
     TargetResult,
+    build_live_evidence,
     build_public_data,
     crawl_targets,
+    evidence_sha256,
     fetch_target,
     load_config,
     load_targets,
@@ -24,6 +26,7 @@ from vps_monitor.monitor import (
     product_quality_gate,
     publish_site,
     request_with_budget,
+    validate_live_evidence,
     validate_round,
 )
 
@@ -483,6 +486,77 @@ def test_round_has_14_ordered_statuses_and_complete_observability():
     assert all(row["price_raw"] is None and row["availability"] is None for row in public["status"])
 
 
+def test_live_evidence_is_bounded_and_redacts_url_and_reason_secrets():
+    target = load_targets(load_config())[0]
+    result = TargetResult(
+        target=target,
+        outcome="blocked",
+        offer=None,
+        http_status=403,
+        final_url="https://user:password@example.com/path?token=secret#fragment",
+        method="unexpected-method",
+        block_reason="https://user:password@example.com/path?token=secret",
+        attempts=1,
+        latency_ms=12,
+        checked_at="2026-07-30T00:00:00+00:00",
+    )
+    evidence = build_live_evidence([result], mode="live")
+    validate_live_evidence(evidence, [target.id])
+    row = evidence["tasks"][0]
+    assert set(row) == {
+        "task_id",
+        "provider",
+        "http_status",
+        "final_url",
+        "method",
+        "outcome",
+        "block_reason",
+        "attempts",
+        "latency_ms",
+    }
+    assert row["final_url"] == "https://example.com"
+    assert row["method"] == "other"
+    assert row["block_reason"] == "unclassified"
+    serialized = __import__("json").dumps(evidence, ensure_ascii=False)
+    assert "password" not in serialized
+    assert "secret" not in serialized
+
+
+def test_live_evidence_reason_codes_and_structure_fail_closed():
+    target = load_targets(load_config())[0]
+    evidence = build_live_evidence([blocked_result(target)], mode="live")
+    evidence["tasks"][0]["block_reason"] = "api_key_secret"
+    with pytest.raises(ValueError):
+        validate_live_evidence(evidence, [target.id])
+
+    evidence = build_live_evidence([blocked_result(target)], mode="live")
+    evidence["tasks"][0]["unexpected"] = True
+    with pytest.raises(ValueError):
+        validate_live_evidence(evidence, [target.id])
+
+    evidence = build_live_evidence([blocked_result(target)], mode="live")
+    evidence["summary"]["task_count"] = 2
+    with pytest.raises(ValueError):
+        validate_live_evidence(evidence, [target.id])
+
+
+def test_live_evidence_preserves_configured_order_and_conserves_summary():
+    targets = load_targets(load_config())
+    evidence = build_live_evidence([blocked_result(target) for target in targets], mode="live")
+    validate_live_evidence(evidence, [target.id for target in targets])
+    assert [row["task_id"] for row in evidence["tasks"]] == [target.id for target in targets]
+    assert evidence["summary"]["task_count"] == 14
+    assert evidence["summary"]["provider_count"] == 10
+    assert evidence["summary"]["outcome_counts"] == {
+        "success": 0,
+        "blocked": 14,
+        "rejected": 0,
+        "error": 0,
+        "out_of_stock": 0,
+    }
+    assert len(evidence_sha256(evidence)) == 64
+
+
 def test_browser_usage_alone_never_counts_as_success():
     target = load_targets(load_config())[0]
     poisoned = TargetResult(
@@ -501,13 +575,15 @@ def test_all_blocked_still_publishes_14_statuses_and_empty_rebuilt_price_data(tm
     assert public["price_history"] == []
     assert public["product_gate"] is False
     publish_site(public, tmp_path)
-    assert len(__import__("json").loads((tmp_path / "data/status.json").read_text())) == 14
+    assert len(__import__("json").loads((tmp_path / "data/status.json").read_text(encoding="utf-8"))) == 14
     assert (tmp_path / "data/prices.json").read_text(encoding="utf-8").strip() == "[]"
     page = (tmp_path / "index.html").read_text(encoding="utf-8")
     assert "app.js" in page
     assert "live-blocked" in (tmp_path / "app.js").read_text(encoding="utf-8")
     assert (tmp_path / "manifest.json").exists()
     assert (tmp_path / "audit.json").exists()
+    evidence = __import__("json").loads((tmp_path / "data/live-evidence.json").read_text(encoding="utf-8"))
+    assert len(evidence["tasks"]) == 14
     assert (tmp_path / "CNAME").read_text(encoding="utf-8") == "vps.jiucai.eu.org\n"
 
 

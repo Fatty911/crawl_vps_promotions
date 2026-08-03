@@ -15,6 +15,12 @@ Pages 只把 `schema_version: 4` 且 `mode: live` 的批次当作当前套餐。
 
 `source_sha` 必须为 40 位小写十六进制，配置和证据摘要必须为 64 位 SHA-256。五类 outcome 的总和必须精确等于 14。
 
+## 脱敏运行证据
+
+`site/data/live-evidence.json` 是面向诊断的最小证据文件，顶层固定为 `schema_version`、`mode`、`tasks`、`summary`。每个 `tasks` 元素固定包含 `task_id`、`provider`、`http_status`、`final_url`、`method`、`outcome`、`block_reason`、`attempts`、`latency_ms`。
+
+`final_url` 只允许 `http(s)://hostname` origin；原因码只允许有限 ASCII 字符集。不会发布凭据、端口、路径、query、fragment、正文、headers、cookies 或代理节点名。`summary` 守恒任务数、服务商数、五类 outcome 和四类 method，且任务顺序必须与 `providers.yaml` 的 14 项一致。`batch.json.evidence_sha256` 必须等于该文件的规范化 SHA-256。
+
 ## Status 与 offer
 
 每条状态必须有 `task_id`、`outcome`、`attempts`、起止时间、`source_url`、`final_url`、`rejection_reason`、`evidence_hash` 和 `parser_version`。

@@ -34,20 +34,22 @@ def test_workflow_has_separate_ordered_build_deploy_verify_gate_alert_release_jo
     assert "workflow_run" in raw
 
 
-def test_build_restores_state_tests_early_artifacts_then_structural_gate_and_pages():
+def test_build_restores_state_tests_early_evidence_then_structural_gate_and_pages():
     workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
     steps = workflow["jobs"]["build"]["steps"]
     names = [step["name"] for step in steps]
     assert names.index("Offline contract tests") < names.index("Restore prior state")
     assert names.index("Restore prior state") < names.index("Build complete live round")
-    assert names.index("Build complete live round") < names.index("Upload early raw evidence")
+    assert names.index("Build complete live round") < names.index("Upload early live evidence")
     assert names.index("Upload early state") < names.index("Structural publish gate")
     assert names.index("Structural publish gate") < names.index("Upload Pages artifact")
     raw = WORKFLOW.read_text(encoding="utf-8")
     assert "github.run_id" in raw and "github.run_attempt" in raw and "github.sha" in raw
     assert "github.event.workflow_run.head_sha || github.sha" in raw
     assert "ref: ${{ env.SOURCE_SHA }}" in raw
-    assert "raw-evidence-" in raw and "state-" in raw and "pages-payload-" in raw
+    assert "live-evidence-" in raw and "state-" in raw and "pages-payload-" in raw
+    assert "path: site/data/live-evidence.json" in raw
+    assert "path: site/data/batch.json" not in raw[raw.index("Upload early live evidence"):raw.index("Upload early state")]
     assert "--live --output" in raw
     assert 'title="monitor-blocked:$fingerprint"' in raw
     assert "gh issue close" in raw

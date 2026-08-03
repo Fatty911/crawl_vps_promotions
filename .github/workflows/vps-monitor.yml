@@ -58,12 +58,12 @@ jobs:
             --destination state
       - name: Build complete live round
         run: python -m vps_monitor.monitor --live --output
-      - name: Upload early raw evidence
+      - name: Upload early live evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: raw-evidence-${{ github.run_id }}-${{ github.run_attempt }}-${{ env.SOURCE_SHA }}
-          path: site/data/batch.json
+          name: live-evidence-${{ github.run_id }}-${{ github.run_attempt }}-${{ env.SOURCE_SHA }}
+          path: site/data/live-evidence.json
           if-no-files-found: warn
           retention-days: 14
       - name: Upload early state
@@ -251,3 +251,4 @@ jobs:
             release-site/data/status.json
             release-site/data/prices.json
             release-site/data/summary.json
+            release-site/data/live-evidence.json

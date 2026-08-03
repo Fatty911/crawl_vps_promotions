@@ -29,6 +29,7 @@ from vps_monitor.audit import (
 )
 from vps_monitor.contracts import (
     ContractError,
+    OUTCOMES,
     build_envelope,
     validate_envelope,
     validate_live_envelope,
@@ -45,6 +46,41 @@ CONFIG_PATH = ROOT / "providers.yaml"
 SITE_DIR = ROOT / "site"
 STATE_DIR = ROOT / "state"
 WEB_DIR = ROOT / "web"
+
+LIVE_EVIDENCE_FIELDS = frozenset(
+    {
+        "task_id",
+        "provider",
+        "http_status",
+        "final_url",
+        "method",
+        "outcome",
+        "block_reason",
+        "attempts",
+        "latency_ms",
+    }
+)
+LIVE_EVIDENCE_METHODS = ("requests", "browser", "circuit", "other")
+LIVE_EVIDENCE_REASON_RE = re.compile(r"^[a-z0-9_.:-]{1,80}$")
+LIVE_EVIDENCE_REASON_CODES = frozenset(
+    {
+        "request_failed",
+        "http_status",
+        "connection_error",
+        "browser_error",
+        "challenge_detected",
+        "url_domain_mismatch",
+        "provider_circuit_open",
+        "no_exact_same_card_offer",
+        "multiple_matching_offers",
+        "currency_or_period_conflict",
+        "detail_unverified",
+        "sold_out",
+        "playwright_not_installed",
+        "offline_smoke_no_network",
+        "unclassified",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -417,6 +453,174 @@ def product_quality_gate(prices: list[dict[str, Any]]) -> bool:
     return audited_product_quality_gate(prices)
 
 
+def _safe_evidence_url(value: str | None) -> str | None:
+    if not value:
+        return None
+    try:
+        parsed = urlparse(str(value))
+    except ValueError:
+        return None
+    scheme = parsed.scheme.lower()
+    hostname = parsed.hostname
+    if scheme not in {"http", "https"} or not hostname:
+        return None
+    hostname = hostname.lower()
+    if ":" in hostname:
+        hostname = f"[{hostname}]"
+    return f"{scheme}://{hostname}"
+
+
+def _safe_evidence_reason(value: str | None) -> str | None:
+    if value is None:
+        return None
+    candidate = str(value).strip().lower()
+    if not candidate:
+        return None
+    if candidate in LIVE_EVIDENCE_REASON_CODES:
+        return candidate
+    if re.fullmatch(r"http_\d{3}", candidate):
+        return "http_status"
+    if candidate.startswith("connection:"):
+        return "connection_error"
+    if candidate.startswith("browser:"):
+        return "browser_error"
+    if candidate in {word.casefold() for word in CHALLENGE_WORDS}:
+        return "challenge_detected"
+    return "unclassified"
+
+
+def _safe_evidence_method(value: str | None) -> str:
+    candidate = str(value or "").strip().lower()
+    return candidate if candidate in LIVE_EVIDENCE_METHODS else "other"
+
+
+def _safe_evidence_outcome(value: str | None) -> str:
+    candidate = str(value or "").strip()
+    return candidate if candidate in OUTCOMES else "error"
+
+
+def _safe_evidence_int(value: Any) -> int:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else 0
+
+
+def _safe_evidence_status(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and 100 <= value <= 599 else None
+
+
+def _evidence_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    outcome_counts = {outcome: 0 for outcome in OUTCOMES}
+    method_counts = {method: 0 for method in LIVE_EVIDENCE_METHODS}
+    for row in rows:
+        outcome_counts[row["outcome"]] += 1
+        method_counts[row["method"]] += 1
+    return {
+        "task_count": len(rows),
+        "provider_count": len({row["provider"] for row in rows}),
+        "outcome_counts": outcome_counts,
+        "method_counts": method_counts,
+    }
+
+
+def _build_evidence_document(rows: list[dict[str, Any]], *, mode: str) -> dict[str, Any]:
+    return {
+        "schema_version": 1,
+        "mode": mode,
+        "tasks": rows,
+        "summary": _evidence_summary(rows),
+    }
+
+
+def build_live_evidence(
+    results: list[TargetResult],
+    *,
+    mode: str,
+) -> dict[str, Any]:
+    rows = [
+        {
+            "task_id": result.target.id,
+            "provider": result.target.provider,
+            "http_status": _safe_evidence_status(result.http_status),
+            "final_url": _safe_evidence_url(result.final_url),
+            "method": _safe_evidence_method(result.method),
+            "outcome": _safe_evidence_outcome(result.outcome),
+            "block_reason": _safe_evidence_reason(result.block_reason),
+            "attempts": _safe_evidence_int(result.attempts),
+            "latency_ms": _safe_evidence_int(result.latency_ms),
+        }
+        for result in results
+    ]
+    return _build_evidence_document(rows, mode=mode)
+
+
+def _evidence_from_public(public: dict[str, Any]) -> dict[str, Any]:
+    statuses = public.get("status") or []
+    rows = [
+        {
+            "task_id": str(status.get("task_id") or status.get("id") or ""),
+            "provider": str(status.get("provider") or ""),
+            "http_status": _safe_evidence_status(status.get("http_status")),
+            "final_url": _safe_evidence_url(status.get("final_url")),
+            "method": _safe_evidence_method(status.get("method")),
+            "outcome": _safe_evidence_outcome(status.get("outcome")),
+            "block_reason": _safe_evidence_reason(status.get("block_reason")),
+            "attempts": _safe_evidence_int(status.get("attempts")),
+            "latency_ms": _safe_evidence_int(status.get("latency_ms")),
+        }
+        for status in statuses
+        if isinstance(status, dict)
+    ]
+    mode = str(statuses[0].get("mode") or "fixture") if statuses else "fixture"
+    return _build_evidence_document(rows, mode=mode)
+
+
+def validate_live_evidence(
+    evidence: dict[str, Any],
+    expected_task_ids: list[str],
+    *,
+    expected_mode: str = "live",
+) -> None:
+    if not isinstance(evidence, dict) or set(evidence) != {
+        "schema_version",
+        "mode",
+        "tasks",
+        "summary",
+    }:
+        raise ContractError("live evidence has an unexpected schema")
+    if evidence.get("schema_version") != 1 or evidence.get("mode") != expected_mode:
+        raise ContractError("live evidence schema or mode is invalid")
+    rows = evidence.get("tasks")
+    if not isinstance(rows, list) or [row.get("task_id") for row in rows if isinstance(row, dict)] != expected_task_ids:
+        raise ContractError("live evidence task order is not exactly conserved")
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != LIVE_EVIDENCE_FIELDS:
+            raise ContractError("live evidence row fields are not allowlisted")
+        if not isinstance(row["task_id"], str) or not row["task_id"]:
+            raise ContractError("live evidence task_id is invalid")
+        if not isinstance(row["provider"], str) or not row["provider"]:
+            raise ContractError("live evidence provider is invalid")
+        if _safe_evidence_status(row["http_status"]) != row["http_status"]:
+            raise ContractError("live evidence http_status is invalid")
+        if row["final_url"] is not None and _safe_evidence_url(row["final_url"]) != row["final_url"]:
+            raise ContractError("live evidence final_url is not a safe origin")
+        if row["method"] not in LIVE_EVIDENCE_METHODS or row["outcome"] not in OUTCOMES:
+            raise ContractError("live evidence enum is invalid")
+        if row["block_reason"] is not None and (
+            not isinstance(row["block_reason"], str)
+            or row["block_reason"] not in LIVE_EVIDENCE_REASON_CODES
+        ):
+            raise ContractError("live evidence block_reason is invalid")
+        if _safe_evidence_int(row["attempts"]) != row["attempts"] or _safe_evidence_int(row["latency_ms"]) != row["latency_ms"]:
+            raise ContractError("live evidence numeric field is invalid")
+    if evidence.get("summary") != _evidence_summary(rows):
+        raise ContractError("live evidence summary does not conserve observations")
+
+
+def evidence_sha256(evidence: dict[str, Any]) -> str:
+    return hashlib.sha256(
+        json.dumps(evidence, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
 def build_public_data(
     results: list[TargetResult],
     targets: list[PlanTarget],
@@ -579,6 +783,7 @@ def publish_site(
     public: dict[str, Any],
     site_dir: Path = SITE_DIR,
     *,
+    evidence: dict[str, Any] | None = None,
     envelope: dict[str, Any] | None = None,
     audit_report: dict[str, Any] | None = None,
 ) -> None:
@@ -597,6 +802,17 @@ def publish_site(
             json.dumps(public[key], ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+    evidence = evidence if evidence is not None else _evidence_from_public(public)
+    expected_task_ids = [
+        str(row.get("task_id") or row.get("id") or "")
+        for row in public.get("status", [])
+        if isinstance(row, dict)
+    ]
+    evidence_mode = str(public.get("status", [{}])[0].get("mode") or "fixture")
+    validate_live_evidence(evidence, expected_task_ids, expected_mode=evidence_mode)
+    data_dir.joinpath("live-evidence.json").write_text(
+        json.dumps(evidence, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     if envelope is not None:
         data_dir.joinpath("batch.json").write_text(
             json.dumps(envelope, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -669,10 +885,11 @@ def build_batch_envelope(
     started_at: str,
     finished_at: str,
     baseline_batch_id: str | None = None,
+    evidence: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    evidence_sha = hashlib.sha256(
-        json.dumps(public["status"], ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    evidence = evidence if evidence is not None else _evidence_from_public(public)
+    expected_task_ids = [target.id for target in targets]
+    validate_live_evidence(evidence, expected_task_ids, expected_mode=mode)
     envelope = build_envelope(
         repo="crawl_vps_promotions",
         run_id=run_id,
@@ -686,7 +903,7 @@ def build_batch_envelope(
         expected_tasks=14,
         statuses=public["status"],
         prices=public["prices"],
-        evidence_sha256=evidence_sha,
+        evidence_sha256=evidence_sha256(evidence),
         audit_status="pass" if public["product_gate"] else "blocked",
     )
     validate_envelope(envelope, [target.id for target in targets])
@@ -1177,13 +1394,17 @@ def quality_gate(site_dir: Path = SITE_DIR) -> bool:
     try:
         prices = json.loads((site_dir / "data" / "prices.json").read_text(encoding="utf-8"))
         envelope = json.loads((site_dir / "data" / "batch.json").read_text(encoding="utf-8"))
+        evidence = json.loads((site_dir / "data" / "live-evidence.json").read_text(encoding="utf-8"))
         manifest = json.loads((site_dir / "manifest.json").read_text(encoding="utf-8"))
         audit = json.loads((site_dir / "audit.json").read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        expected_task_ids = [target.id for target in load_targets(load_config())]
+        validate_live_evidence(evidence, expected_task_ids)
+    except (OSError, json.JSONDecodeError, ContractError, TypeError, ValueError):
         return False
     return (
         isinstance(prices, list)
         and envelope.get("mode") == "live"
+        and evidence_sha256(evidence) == envelope.get("evidence_sha256")
         and audit.get("structure_status") == "pass"
         and manifest.get("batch_id") == envelope.get("batch_id")
         and not verify_file_manifest(site_dir, manifest)
@@ -1198,12 +1419,15 @@ def structure_gate(site_dir: Path, expected_task_ids: list[str]) -> bool:
         audit = json.loads((site_dir / "audit.json").read_text(encoding="utf-8"))
         statuses = json.loads((site_dir / "data" / "status.json").read_text(encoding="utf-8"))
         prices = json.loads((site_dir / "data" / "prices.json").read_text(encoding="utf-8"))
+        evidence = json.loads((site_dir / "data" / "live-evidence.json").read_text(encoding="utf-8"))
         validate_live_envelope(envelope, expected_task_ids)
-    except (OSError, json.JSONDecodeError, ContractError, TypeError):
+        validate_live_evidence(evidence, expected_task_ids)
+    except (OSError, json.JSONDecodeError, ContractError, TypeError, ValueError):
         return False
     return (
         statuses == envelope.get("statuses")
         and prices == envelope.get("prices")
+        and evidence_sha256(evidence) == envelope.get("evidence_sha256")
         and audit.get("structure_status") == "pass"
         and manifest.get("schema_version") == 4
         and manifest.get("batch_id") == envelope.get("batch_id")
@@ -1272,6 +1496,7 @@ def main() -> int:
         _read_existing_history(args.site_dir),
         mode=mode,
     )
+    evidence = build_live_evidence(results, mode=mode)
     finished_at = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
     envelope = build_batch_envelope(
         public,
@@ -1283,12 +1508,14 @@ def main() -> int:
         config_sha256=hashlib.sha256(args.config.read_bytes()).hexdigest(),
         started_at=started_at,
         finished_at=finished_at,
+        evidence=evidence,
     )
     report = audit_envelope(envelope, [target.id for target in targets])
     if args.output:
         publish_site(
             public,
             site_dir=args.site_dir,
+            evidence=evidence,
             envelope=envelope,
             audit_report=report,
         )
