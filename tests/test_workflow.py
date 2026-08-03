@@ -66,9 +66,6 @@ def test_live_crawl_explicitly_bypasses_runner_proxy():
         "HTTP_PROXY": "",
         "HTTPS_PROXY": "",
         "ALL_PROXY": "",
-        "http_proxy": "",
-        "https_proxy": "",
-        "all_proxy": "",
     }
 
 
