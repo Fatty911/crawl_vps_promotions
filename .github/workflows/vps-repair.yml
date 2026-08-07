@@ -1,0 +1,129 @@
+name: VPS auto-repair
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 失败 vps-monitor run ID（来自 vps-diagnosis issue）
+        required: true
+        type: string
+      auto_repair:
+        description: 确认启用 P0b 自动修复（需双 secrets）
+        required: true
+        type: boolean
+        default: false
+
+concurrency:
+  group: vps-auto-repair
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+env:
+  UPSTREAM_RUN_ID: ${{ inputs.run_id }}
+
+jobs:
+  repair:
+    # Only a human dispatch with auto_repair=true may run; secrets are
+    # validated inside the job (job-level if cannot read the secrets context).
+    if: github.event.inputs.auto_repair == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Verify required secrets exist
+        env:
+          KIMI_CODINGPLAN_API_KEY: ${{ secrets.KIMI_CODINGPLAN_API_KEY }}
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+        run: |
+          if [ -z "$KIMI_CODINGPLAN_API_KEY" ] || [ -z "$NVIDIA_NIM_API_KEY" ]; then
+            echo "P0b disabled: missing KIMI_CODINGPLAN_API_KEY or NVIDIA_NIM_API_KEY secret"
+            exit 1
+          fi
+          echo "both secrets present"
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements.txt
+
+      - name: Set up Node.js and OpenCode CLI
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install OpenCode CLI
+        run: npm install --global opencode-ai@latest
+
+      - name: Download upstream live evidence
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p evidence
+          if [ -n "$UPSTREAM_RUN_ID" ]; then
+            gh run download "$UPSTREAM_RUN_ID" --repo "${{ github.repository }}" --dir evidence || true
+          fi
+          EVIDENCE_FILE=$(find evidence -type f -name live-evidence.json | head -n 1)
+          if [ -z "$EVIDENCE_FILE" ]; then
+            echo "no live-evidence artifact found for run $UPSTREAM_RUN_ID"
+            exit 1
+          fi
+          cp "$EVIDENCE_FILE" live-evidence.json
+
+      - name: Classify failures
+        run: |
+          python scripts/classify_vps_failure.py \
+            --evidence live-evidence.json \
+            --config providers.yaml \
+            --out classification.json
+
+      - name: Run bounded auto-repair for each site_breakage task
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KIMI_CODINGPLAN_API_KEY: ${{ secrets.KIMI_CODINGPLAN_API_KEY }}
+          NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          UPSTREAM_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          python - <<'PY'
+          import json, os, subprocess, sys
+          report = json.load(open("classification.json", encoding="utf-8"))
+          tasks = [t for t in report["tasks"] if t["classification"] == "site_breakage"]
+          if not tasks:
+              print("no site_breakage tasks; nothing to repair")
+              sys.exit(0)
+          run_id = os.environ["UPSTREAM_RUN_ID"]
+          marker_base = run_id
+          failures = 0
+          for index, task in enumerate(tasks[:3]):  # bounded: at most 3 per run
+              marker = f"{marker_base}-{task['task_id']}"
+              print(f"=== repairing {task['task_id']} ({index + 1}/{min(len(tasks), 3)}) ===")
+              result = subprocess.run([
+                  "python", "scripts/self_repair_runner_vps.py",
+                  "--classification", "classification.json",
+                  "--task-id", task["task_id"],
+                  "--run-id", run_id,
+                  "--attempt-marker", marker,
+              ], capture_output=True, text=True, timeout=1500)
+              print(result.stdout[-2000:])
+              if result.stderr:
+                  print(result.stderr[-2000:], file=sys.stderr)
+              if result.returncode != 0:
+                  failures += 1
+                  print(f"repair for {task['task_id']} exit {result.returncode}")
+          if failures:
+              print(f"{failures} repair(s) failed; see logs")
+              sys.exit(0)  # diagnosis issue already reflects state; no false alarm
+          PY

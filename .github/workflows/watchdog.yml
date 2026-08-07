@@ -1,0 +1,55 @@
+name: VPS watchdog
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: vps-watchdog
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+  issues: write
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Collect latest monitor runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/runs?workflow_file=vps-monitor.yml&per_page=5" \
+            --jq '.workflow_runs' > runs.json
+          python -c "import json; print('runs collected:', len(json.load(open('runs.json'))))"
+
+      - name: Stuck run + consecutive failure check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/watchdog_check.py \
+            --runs runs.json \
+            --repo "${{ github.repository }}" \
+            --stuck-minutes 60 \
+            --consecutive-failures 5
+
+      - name: Pages freshness check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python scripts/watchdog_check.py --check-freshness \
+            --repo "${{ github.repository }}" \
+            --freshness-hours 26 \
+            --pages-url "https://fatty911.github.io/crawl_vps_promotions/manifest.json" || true
