@@ -825,6 +825,7 @@ def publish_site(
     evidence: dict[str, Any] | None = None,
     envelope: dict[str, Any] | None = None,
     audit_report: dict[str, Any] | None = None,
+    deals: dict[str, Any] | None = None,
 ) -> None:
     staging = site_dir.parent / f".{site_dir.name}-staging"
     if staging.exists():
@@ -839,6 +840,11 @@ def publish_site(
     ):
         data_dir.joinpath(name).write_text(
             json.dumps(public[key], ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    if deals is not None:
+        data_dir.joinpath("deals.json").write_text(
+            json.dumps(deals, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
     evidence = evidence if evidence is not None else _evidence_from_public(public)
@@ -1565,6 +1571,17 @@ def main() -> int:
         evidence=evidence,
     )
     report = audit_envelope(envelope, [target.id for target in targets])
+    deals_report: dict[str, Any] | None = None
+    if args.output and mode == "live":
+        try:
+            sys.path.insert(0, str(ROOT / "scripts"))
+            from fetch_deals import build_deals
+
+            # Write into a temp dir only for the fetch, then pass the payload
+            # to publish_site so the manifest includes it atomically.
+            deals_report = build_deals(site_dir=Path(args.site_dir).parent / ".deals-tmp")
+        except Exception as exc:  # intel failure must not fail the round
+            print(f"[deals] skipped: {type(exc).__name__}: {exc}", file=sys.stderr)
     if args.output:
         publish_site(
             public,
@@ -1572,6 +1589,7 @@ def main() -> int:
             evidence=evidence,
             envelope=envelope,
             audit_report=report,
+            deals=deals_report,
         )
         if mode == "live":
             write_state_directory(
