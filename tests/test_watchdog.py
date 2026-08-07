@@ -82,6 +82,63 @@ def test_alert_title_prefix_is_stable():
     assert wc.ALERT_TITLE_PREFIX == "[vps-watchdog] "
 
 
+def test_freshness_reads_batch_json(monkeypatch, tmp_path):
+    """Freshness must read finished_at from data/batch.json (manifest lacks it)."""
+    import urllib.request as ur
+
+    manifest = {"batch_id": "crawl_vps_promotions:1:1", "schema_version": 4}
+    batch = {"batch_id": "crawl_vps_promotions:1:1",
+             "finished_at": dt.datetime.now(dt.UTC).isoformat()}
+
+    class R:
+        def __init__(self, url):
+            self._url = str(url)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            payload = batch if self._url.endswith("batch.json") else manifest
+            return json.dumps(payload).encode()
+
+    monkeypatch.setattr(ur, "urlopen", lambda url, timeout: R(url))
+    calls = {"alert": 0}
+    monkeypatch.setattr(wc, "upsert_alert", lambda repo, fp, body: calls.__setitem__("alert", calls["alert"] + 1))
+    wc.check_freshness("o/r", 26, "https://fatty911.github.io/crawl_vps_promotions/manifest.json")
+    assert calls["alert"] == 0
+
+
+def test_freshness_stale_alert(monkeypatch):
+    import urllib.request as ur
+
+    manifest = {"batch_id": "crawl_vps_promotions:1:1"}
+    old = (dt.datetime.now(dt.UTC) - dt.timedelta(hours=30)).isoformat()
+    batch = {"batch_id": "crawl_vps_promotions:1:1", "finished_at": old}
+
+    class R:
+        def __init__(self, url):
+            self._url = str(url)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self):
+            payload = batch if self._url.endswith("batch.json") else manifest
+            return json.dumps(payload).encode()
+
+    monkeypatch.setattr(ur, "urlopen", lambda url, timeout: R(url))
+    calls = {"alert": 0}
+    monkeypatch.setattr(wc, "upsert_alert", lambda repo, fp, body: calls.__setitem__("alert", calls["alert"] + 1))
+    wc.check_freshness("o/r", 26, "https://fatty911.github.io/crawl_vps_promotions/manifest.json")
+    assert calls["alert"] == 1
+
+
 def test_watchdog_repair_separation():
     """C2: repair must be a separate, dispatch-only workflow; diagnosis
     must not carry contents:write (no implicit push authorization)."""

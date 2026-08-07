@@ -105,16 +105,29 @@ def check_freshness(repo: str, freshness_hours: int, pages_url: str) -> None:
     except Exception as exc:
         upsert_alert(repo, "pages-unreachable", f"线上 manifest 不可达: {exc}\nurl={pages_url}")
         return
-    finished = manifest.get("finished_at") or manifest.get("started_at")
+    # finished_at lives in data/batch.json, not the manifest itself.
+    base = pages_url.rsplit("/", 1)[0]
+    batch_url = f"{base}/data/batch.json"
+    try:
+        with urllib.request.urlopen(batch_url, timeout=30) as resp:
+            batch = json.loads(resp.read())
+    except Exception as exc:
+        upsert_alert(
+            repo,
+            "pages-batch-unreachable",
+            f"线上 batch.json 不可达: {exc}\nurl={batch_url}\nbatch_id={manifest.get('batch_id')}",
+        )
+        return
+    finished = batch.get("finished_at")
     if not finished:
-        upsert_alert(repo, "pages-manifest-invalid", "线上 manifest 缺少 finished_at")
+        upsert_alert(repo, "pages-manifest-invalid", "线上 batch.json 缺少 finished_at")
         return
     finished_dt = dt.datetime.fromisoformat(str(finished).replace("Z", "+00:00"))
     age = (dt.datetime.now(dt.UTC) - finished_dt).total_seconds() / 3600
     if age > freshness_hours:
         upsert_alert(
             repo,
-            f"pages-stale-{finished[:10]}",
+            f"pages-stale-{str(finished)[:10]}",
             f"线上 Pages 数据已 {age:.1f} 小时未更新（阈值 {freshness_hours}h）。"
             f"batch_id={manifest.get('batch_id')} finished_at={finished}",
         )
