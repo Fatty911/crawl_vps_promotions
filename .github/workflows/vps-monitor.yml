@@ -56,13 +56,17 @@ jobs:
             --current-run-id "${{ github.run_id }}" \
             --config-sha256 "$CONFIG_SHA" \
             --destination state
-      - name: Build complete live round
-        # Hosted runners expose a platform HTTP proxy; VPS storefronts must be fetched directly.
+      - name: Configure mihomo node-rotation runtime
         env:
-          HTTP_PROXY: ""
-          HTTPS_PROXY: ""
-          ALL_PROXY: ""
+          PROXY_SUBSCRIPTIONS: ${{ secrets.PROXY_SUBSCRIPTIONS }}
+        run: python scripts/setup_proxy_runtime.py || echo "mihomo runtime unavailable; monitor will run direct"
+      - name: Build complete live round
+        # mihomo runtime exports HTTP_PROXY=127.0.0.1:7890 for node rotation;
+        # without it (setup failed) the monitor falls back to direct fetches.
         run: python -m vps_monitor.monitor --live --output
+      - name: Clear crawler proxy environment
+        if: always()
+        run: python scripts/setup_proxy_runtime.py --clear || true
       - name: Upload early live evidence
         if: always()
         uses: actions/upload-artifact@v4

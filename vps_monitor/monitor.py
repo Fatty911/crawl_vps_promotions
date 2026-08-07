@@ -224,6 +224,71 @@ class ProviderCircuitBreaker:
             )
 
 
+_rotator: Any = None
+
+
+def _get_rotator() -> Any:
+    """Lazily build the node rotator when HTTP_PROXY (mihomo) is active.
+
+    Rotation happens only when the workflow started a mihomo runtime
+    (HTTP_PROXY=127.0.0.1:7890). Without it, requests stay direct — the
+    same-card monitor remains honest about reachability.
+    """
+    global _rotator
+    if _rotator is not None:
+        return _rotator
+    proxy_url = os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or ""
+    if not proxy_url or "127.0.0.1" not in proxy_url:
+        _rotator = False
+        return _rotator
+    try:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from node_rotator import NodeRotator
+
+        rotator = NodeRotator(
+            controller=os.getenv("MIHOMO_CONTROLLER", "http://127.0.0.1:9090"),
+            group=os.getenv("MIHOMO_PROXY_GROUP", "PROXY"),
+            blacklist_path=ROOT / "state" / "proxy_blacklist.json",
+        )
+        rotator.discover_nodes()
+        if not rotator.enabled:
+            print("[rotator] controller unreachable; staying direct", file=sys.stderr)
+            _rotator = False
+        else:
+            print(f"[rotator] node rotation active ({rotator.node_count} nodes)")
+            _rotator = rotator
+    except Exception as exc:
+        print(f"[rotator] init failed, staying direct: {type(exc).__name__}: {exc}", file=sys.stderr)
+        _rotator = False
+    return _rotator
+
+
+def _mark_rotator_failure(rotator: Any, blocked: bool = False) -> None:
+    """Record the active node failure so it gets blacklisted on repeated hits."""
+    if not rotator:
+        return
+    try:
+        active = getattr(rotator, "_active_node", "") or ""
+        if not active:
+            return  # no node confirmed active yet; nothing meaningful to blacklist
+        rotator.mark_failure(active, blocked=blocked)
+    except Exception:
+        pass
+
+
+def _mark_rotator_success(rotator: Any) -> None:
+    """Reset the active node's consecutive-failure counter on a 2xx fetch."""
+    if not rotator:
+        return
+    try:
+        active = getattr(rotator, "_active_node", "") or ""
+        if not active:
+            return
+        rotator.mark_success(active)
+    except Exception:
+        pass
+
+
 def request_with_budget(
     url: str,
     *,
@@ -235,6 +300,7 @@ def request_with_budget(
     started = monotonic()
     attempts = 0
     last_reason = "request_failed"
+    rotator = _get_rotator()
     for attempt in range(3):
         remaining = total_budget - (monotonic() - started)
         if remaining <= 0:
@@ -248,6 +314,8 @@ def request_with_budget(
         try:
             _proxy_url = os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or ""
             _proxies = {"http": _proxy_url, "https": os.getenv("HTTPS_PROXY") or os.getenv("https_proxy") or _proxy_url} if _proxy_url else None
+            if rotator:
+                rotator.rotate()
             response = getter(
                 url,
                 headers={
@@ -261,6 +329,7 @@ def request_with_budget(
             )
         except (requests.ConnectionError, requests.Timeout) as exc:
             last_reason = f"connection:{type(exc).__name__}"
+            _mark_rotator_failure(rotator)
             if attempt < 2 and monotonic() - started < total_budget:
                 sleep(0.25 * (attempt + 1))
                 continue
@@ -269,6 +338,8 @@ def request_with_budget(
         final_url = str(response.url)
         if status in {408, 429} or 500 <= status <= 599:
             last_reason = f"http_{status}"
+            if status in {408, 429}:
+                _mark_rotator_failure(rotator)
             if attempt < 2 and monotonic() - started < total_budget:
                 sleep(0.25 * (attempt + 1))
                 continue
@@ -277,6 +348,7 @@ def request_with_budget(
                 last_reason, attempts, int((monotonic() - started) * 1000),
             )
         if status in {401, 403}:
+            _mark_rotator_failure(rotator, blocked=True)
             return HTTPFetch(
                 str(response.text), "blocked", status, final_url, "requests",
                 f"http_{status}", attempts, int((monotonic() - started) * 1000),
@@ -288,6 +360,7 @@ def request_with_budget(
                     str(response.text), "blocked", status, final_url, "requests",
                     word, attempts, int((monotonic() - started) * 1000),
                 )
+        _mark_rotator_success(rotator)
         return HTTPFetch(
             str(response.text), "success" if status < 400 else "error", status,
             final_url, "requests", None if status < 400 else f"http_{status}",
@@ -1549,6 +1622,12 @@ def main() -> int:
         if args.live
         else _offline_results(targets)
     )
+    rotator = _get_rotator()
+    if rotator:
+        try:
+            rotator.save_stats()
+        except Exception as exc:
+            print(f"[rotator] stats save failed: {type(exc).__name__}: {exc}", file=sys.stderr)
     mode = "live" if args.live else "fixture"
     public = build_public_data(
         results,

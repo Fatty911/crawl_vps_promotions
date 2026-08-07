@@ -18,13 +18,15 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import sys
-import urllib.request
 from pathlib import Path
 from typing import Any
 
 import xml.etree.ElementTree as ET
+
+import requests
 
 ROOT = Path(__file__).resolve().parent.parent
 SITE_DIR = ROOT / "site"
@@ -118,13 +120,64 @@ def keyword_match(title: str, summary: str) -> bool:
     return len(weak_hits) >= 2
 
 
+_rotator: Any = None
+
+
+def _get_rotator() -> Any:
+    """Lazily build the node rotator for RSS fetches (same gate as monitor)."""
+    global _rotator
+    if _rotator is not None:
+        return _rotator
+    proxy_url = os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or ""
+    if not proxy_url or "127.0.0.1" not in proxy_url:
+        _rotator = False
+        return _rotator
+    try:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from node_rotator import NodeRotator
+
+        rotator = NodeRotator(
+            controller=os.getenv("MIHOMO_CONTROLLER", "http://127.0.0.1:9090"),
+            group=os.getenv("MIHOMO_PROXY_GROUP", "PROXY"),
+            blacklist_path=ROOT / "state" / "proxy_blacklist.json",
+        )
+        rotator.discover_nodes()
+        _rotator = rotator if rotator.enabled else False
+    except Exception:
+        _rotator = False
+    return _rotator
+
+
 def fetch_feed(url: str, timeout: int = 30) -> str:
-    request = urllib.request.Request(
+    proxies = None
+    proxy_url = os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or ""
+    if proxy_url:
+        proxies = {"http": proxy_url, "https": os.getenv("HTTPS_PROXY") or os.getenv("https_proxy") or proxy_url}
+    rotator = _get_rotator()
+    if rotator:
+        rotator.rotate()
+    response = requests.get(
         url,
         headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0"},
+        timeout=timeout,
+        proxies=proxies,
+        allow_redirects=True,
     )
-    with urllib.request.urlopen(request, timeout=timeout) as response:
-        return response.read().decode("utf-8", errors="replace")
+    status = int(response.status_code)
+    if rotator:
+        try:
+            active = getattr(rotator, "_active_node", "") or ""
+            if not active:
+                pass  # first switch failed; no confirmed node to mark
+            elif status in {401, 403, 408, 429}:
+                rotator.mark_failure(active, blocked=status in {401, 403})
+            elif status < 400:
+                rotator.mark_success(active)
+        except Exception:
+            pass
+    if status >= 400:
+        response.raise_for_status()
+    return response.text
 
 
 def parse_feed(source_key: str, raw: str, *, now: str) -> list[dict[str, Any]]:
@@ -188,6 +241,12 @@ def build_deals(*, site_dir: Path) -> dict[str, Any]:
         "errors": errors,
         "entries": entries[:100],
     }
+    rotator = _get_rotator()
+    if rotator:
+        try:
+            rotator.save_stats()
+        except Exception:
+            pass
     data_dir = site_dir / "data"
     data_dir.mkdir(parents=True, exist_ok=True)
     (data_dir / "deals.json").write_text(

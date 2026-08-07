@@ -143,6 +143,79 @@ def test_deals_scripts_not_in_trust_root_docstring():
     assert "Affiliate" in src and "NOT processed" in src
 
 
+def test_rotator_gate_direct_without_local_proxy(monkeypatch):
+    """Without HTTP_PROXY=127.0.0.1 the monitor must stay direct (no rotator)."""
+    import vps_monitor.monitor as monitor_mod
+
+    monkeypatch.delenv("HTTP_PROXY", raising=False)
+    monkeypatch.delenv("http_proxy", raising=False)
+    monkeypatch.setattr(monitor_mod, "_rotator", None)
+    assert monitor_mod._get_rotator() is False
+
+
+def test_rotator_activates_with_local_mihomo_proxy(monkeypatch, tmp_path):
+    """With HTTP_PROXY=127.0.0.1 the rotator initializes and rotates nodes."""
+    import vps_monitor.monitor as monitor_mod
+
+    class FakeRotator:
+        def __init__(self, *args, **kwargs):
+            self.calls = 0
+            self._active_node = "node-a"
+            self._nodes = ["node-a", "node-b"]
+            self._enabled = False
+
+        def discover_nodes(self):
+            self._enabled = True
+
+        @property
+        def enabled(self):
+            return self._enabled
+
+        @property
+        def node_count(self):
+            return len(self._nodes)
+
+        def rotate(self):
+            self.calls += 1
+            self._active_node = "node-a"
+
+        def mark_failure(self, node, blocked=False):
+            self.last_failure = (node, blocked)
+            self._active_node = node
+
+        def mark_success(self, node):
+            self.last_success = node
+            self._active_node = node
+
+        def save_stats(self):
+            pass
+
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:7890")
+    monkeypatch.setenv("MIHOMO_CONTROLLER", "http://127.0.0.1:9090")
+    monkeypatch.setattr(monitor_mod, "_rotator", None)
+    import types
+
+    fake_mod = types.ModuleType("node_rotator")
+    fake_mod.NodeRotator = FakeRotator
+    monkeypatch.setitem(__import__("sys").modules, "node_rotator", fake_mod)
+    rotator = monitor_mod._get_rotator()
+    assert rotator is not False
+    assert rotator.calls == 0
+    assert rotator.enabled is True
+    rotator.rotate()
+    assert rotator.calls == 1
+    assert rotator._active_node == "node-a"
+    monitor_mod._mark_rotator_failure(rotator, blocked=True)
+    assert rotator.last_failure == ("node-a", True)
+    monitor_mod._mark_rotator_success(rotator)
+    assert rotator.last_success == "node-a"
+    # Empty active node must be skipped (no meaningless stat entries).
+    rotator._active_node = ""
+    monitor_mod._mark_rotator_failure(rotator, blocked=True)
+    assert not hasattr(rotator, "last_failure") or rotator.last_failure == ("node-a", True)
+    monkeypatch.setattr(monitor_mod, "_rotator", None)
+
+
 def test_vps_monitor_workflow_runs_deals_before_structural_gate():
     wf = (ROOT / ".github/workflows/vps-monitor.yml").read_text(encoding="utf-8")
     # Deals are fetched inline during the live round (publish_site writes

@@ -55,18 +55,22 @@ def test_build_restores_state_tests_early_evidence_then_structural_gate_and_page
     assert "gh issue close" in raw
 
 
-def test_live_crawl_explicitly_bypasses_runner_proxy():
+def test_live_crawl_sets_up_mihomo_rotation_with_direct_fallback():
     workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
-    step = next(
-        step
-        for step in workflow["jobs"]["build"]["steps"]
-        if step.get("name") == "Build complete live round"
-    )
-    assert step["env"] == {
-        "HTTP_PROXY": "",
-        "HTTPS_PROXY": "",
-        "ALL_PROXY": "",
-    }
+    steps = workflow["jobs"]["build"]["steps"]
+    names = [step["name"] for step in steps]
+    assert "Configure mihomo node-rotation runtime" in names
+    assert "Clear crawler proxy environment" in names
+    build_step = next(step for step in steps if step.get("name") == "Build complete live round")
+    # Proxy env now comes from the mihomo setup step; the build step itself
+    # has no explicit env (falls back to the exported HTTP_PROXY).
+    assert "env" not in build_step
+    setup_step = next(step for step in steps if step.get("name") == "Configure mihomo node-rotation runtime")
+    assert setup_step["env"]["PROXY_SUBSCRIPTIONS"] == "${{ secrets.PROXY_SUBSCRIPTIONS }}"
+    assert "setup_proxy_runtime.py" in setup_step["run"]
+    # Direct fallback stays possible when mihomo is unavailable.
+    raw = WORKFLOW.read_text(encoding="utf-8")
+    assert "mihomo runtime unavailable; monitor will run direct" in raw
 
 
 def test_action_refs_follow_official_major_and_maintained_third_party_allowlist():
