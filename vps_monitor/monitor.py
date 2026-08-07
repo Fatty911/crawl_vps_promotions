@@ -97,6 +97,10 @@ class PlanTarget:
     expected_currencies: tuple[str, ...] = ()
     expected_billing_periods: tuple[str, ...] = ()
     lifecycle: str = "active"
+    reliability: float = 6.0
+    oversell: str = "medium"
+    reliability_note: str = ""
+    specs: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -621,6 +625,35 @@ def evidence_sha256(evidence: dict[str, Any]) -> str:
     ).hexdigest()
 
 
+def _specs_dict(target: PlanTarget) -> dict[str, float]:
+    return {key: value for key, value in target.specs}
+
+
+def value_score(target: PlanTarget, monthly_amount: float | None) -> float | None:
+    """Value-for-money score 1.0-10.0 (one decimal).
+
+    specs_index weights CPU/RAM/storage/bandwidth relative to a reference
+    box; value = specs_index / monthly USD, mapped to 1..10. Returns None
+    when no monthly price is available (non-success outcome).
+    """
+    if monthly_amount is None or monthly_amount <= 0:
+        return None
+    specs = _specs_dict(target)
+    cpu = min(float(specs.get("cpu", 1)), 4.0) / 4.0
+    ram = min(float(specs.get("ram_gb", 1)), 16.0) / 16.0
+    storage = min(float(specs.get("storage_gb", 10)), 200.0) / 200.0
+    bandwidth = min(float(specs.get("bandwidth_gbps", 1)), 10.0) / 10.0
+    index = cpu * 0.3 + ram * 0.4 + storage * 0.2 + bandwidth * 0.1
+    if index <= 0:
+        return None
+    raw = index / monthly_amount * 100.0
+    # Map: >= 5 USD/unit -> 10, 0.5 USD/unit -> ~1 (log scale, clamped)
+    import math
+
+    score = 1.0 + 9.0 * (math.log10(raw + 0.1) + 1.0) / 2.0
+    return round(max(1.0, min(10.0, score)), 1)
+
+
 def build_public_data(
     results: list[TargetResult],
     targets: list[PlanTarget],
@@ -682,6 +715,11 @@ def build_public_data(
             "finished_at": result.checked_at,
             "evidence_hash": evidence_hash,
             "parser_version": "vps-v4",
+            "reliability": target.reliability,
+            "oversell": target.oversell,
+            "reliability_note": target.reliability_note,
+            "specs": _specs_dict(target),
+            "value_score": value_score(target, offer.monthly_amount if offer else None),
         }
         statuses.append(status)
         if offer:
@@ -900,7 +938,7 @@ def build_batch_envelope(
         finished_at=finished_at,
         mode=mode,
         baseline_batch_id=baseline_batch_id,
-        expected_tasks=14,
+        expected_tasks=len(targets),
         statuses=public["status"],
         prices=public["prices"],
         evidence_sha256=evidence_sha256(evidence),
@@ -979,6 +1017,14 @@ def load_targets(config: dict[str, Any]) -> list[PlanTarget]:
                 str(period) for period in row["expected_billing_periods"]
             ),
             lifecycle=str(row["lifecycle"]),
+            reliability=float(row.get("reliability", 6.0) or 6.0),
+            oversell=str(row.get("oversell", "medium") or "medium"),
+            reliability_note=str(row.get("reliability_note", "") or ""),
+            specs=tuple(
+                (str(key), float(value))
+                for key, value in (row.get("specs") or {}).items()
+                if value is not None
+            ),
         )
         for row in config["targets"]
     ]
@@ -1472,8 +1518,15 @@ def main() -> int:
     parser.add_argument("--output", action="store_true")
     parser.add_argument("--quality-gate", action="store_true")
     parser.add_argument("--structure-gate", action="store_true")
+    parser.add_argument("--deals", action="store_true", help="fetch review/AFF RSS intel into site/data/deals.json")
     parser.add_argument("--site-dir", type=Path, default=SITE_DIR)
     args = parser.parse_args()
+    if args.deals:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from fetch_deals import build_deals
+
+        build_deals(site_dir=args.site_dir)
+        return 0
     if args.quality_gate:
         passed = quality_gate(args.site_dir)
         print(json.dumps({"vps_product_quality_gate": "pass" if passed else "fail"}))

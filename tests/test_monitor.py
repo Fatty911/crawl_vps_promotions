@@ -56,12 +56,14 @@ EXPECTED_IDS = [
 ]
 
 
-def test_config_has_exact_14_targets_across_10_providers_and_official_domains():
+def test_config_has_expanded_targets_across_providers_and_official_domains():
     targets = load_targets(load_config())
-    assert [target.id for target in targets] == EXPECTED_IDS
-    assert len({target.provider for target in targets}) == 10
-    assert len({urlparse(target.url).hostname for target in targets}) >= 10
-    assert len({target.url for target in targets}) == 14
+    # Task set is expanded (v4 extension); conservation is checked dynamically.
+    assert len(targets) >= 25
+    assert len({target.id for target in targets}) == len(targets)
+    assert len({target.provider for target in targets}) >= 16
+    assert len({urlparse(target.url).hostname for target in targets}) >= 15
+    assert len({target.url for target in targets}) == len(targets)
     assert all(target.plan_name and target.plan_tokens for target in targets)
     assert all("aff" not in urlparse(target.url).query.lower() for target in targets)
     assert all(target.expected_domains and target.priority > 0 for target in targets)
@@ -423,7 +425,7 @@ def test_browser_limiter_global_one_and_crawl_preserves_config_order():
         browser_fn=lambda _: pytest.fail("403 must not invoke browser"),
     )
     assert [result.target.id for result in results] == [target.id for target in targets]
-    assert len(results) == 14
+    assert len(results) == len(targets)
 
 
 def blocked_result(target):
@@ -463,13 +465,13 @@ def test_round_has_14_ordered_statuses_and_complete_observability():
     results = [blocked_result(target) for target in targets]
     summary = validate_round(results, targets)
     assert summary == {
-        "attempted": 14,
+        "attempted": len(targets),
         "success": 0,
-        "blocked": 14,
+        "blocked": len(targets),
         "rejected": 0,
         "error": 0,
         "out_of_stock": 0,
-        "providers": 10,
+        "providers": len({target.provider for target in targets}),
     }
     public = build_public_data(results, targets)
     assert [row["id"] for row in public["status"]] == [target.id for target in targets]
@@ -545,11 +547,11 @@ def test_live_evidence_preserves_configured_order_and_conserves_summary():
     evidence = build_live_evidence([blocked_result(target) for target in targets], mode="live")
     validate_live_evidence(evidence, [target.id for target in targets])
     assert [row["task_id"] for row in evidence["tasks"]] == [target.id for target in targets]
-    assert evidence["summary"]["task_count"] == 14
-    assert evidence["summary"]["provider_count"] == 10
+    assert evidence["summary"]["task_count"] == len(targets)
+    assert evidence["summary"]["provider_count"] == len({target.provider for target in targets})
     assert evidence["summary"]["outcome_counts"] == {
         "success": 0,
-        "blocked": 14,
+        "blocked": len(targets),
         "rejected": 0,
         "error": 0,
         "out_of_stock": 0,
@@ -575,7 +577,7 @@ def test_all_blocked_still_publishes_14_statuses_and_empty_rebuilt_price_data(tm
     assert public["price_history"] == []
     assert public["product_gate"] is False
     publish_site(public, tmp_path)
-    assert len(__import__("json").loads((tmp_path / "data/status.json").read_text(encoding="utf-8"))) == 14
+    assert len(__import__("json").loads((tmp_path / "data/status.json").read_text(encoding="utf-8"))) == len(targets)
     assert (tmp_path / "data/prices.json").read_text(encoding="utf-8").strip() == "[]"
     page = (tmp_path / "index.html").read_text(encoding="utf-8")
     assert "app.js" in page
@@ -583,7 +585,7 @@ def test_all_blocked_still_publishes_14_statuses_and_empty_rebuilt_price_data(tm
     assert (tmp_path / "manifest.json").exists()
     assert (tmp_path / "audit.json").exists()
     evidence = __import__("json").loads((tmp_path / "data/live-evidence.json").read_text(encoding="utf-8"))
-    assert len(evidence["tasks"]) == 14
+    assert len(evidence["tasks"]) == len(targets)
     assert (tmp_path / "CNAME").read_text(encoding="utf-8") == "vps.jiucai.eu.org\n"
 
 

@@ -1,9 +1,13 @@
-config_revision: 4
+config_revision: 5
 retired_task_ids: []
 target_defaults: &target_defaults
   lifecycle: active
   expected_billing_periods: [monthly, quarterly, yearly]
+  reliability: 6
+  oversell: medium
+  reliability_note: ""
 targets:
+  # ============ ZoroCloud ============
   - id: zorocloud-us-cnc-pro
     <<: *target_defaults
     priority: 10
@@ -15,6 +19,10 @@ targets:
     url: https://zorocloud.com/index.php/store/us-cnc-pro
     region: US
     provider_claimed_routes: [CN2, CUG, CMIN2]
+    reliability: 6
+    oversell: medium
+    reliability_note: 小众国内商家，社区反馈一般，线路宣传多于实测
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 40, bandwidth_gbps: 0.5}
   - id: zorocloud-us-9929-pro
     <<: *target_defaults
     priority: 20
@@ -26,6 +34,9 @@ targets:
     url: https://zorocloud.com/index.php/store/us-9929-pro
     region: US
     provider_claimed_routes: [AS9929]
+    reliability: 6
+    oversell: medium
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 40, bandwidth_gbps: 0.5}
   - id: zorocloud-jp-cn2-pro
     <<: *target_defaults
     priority: 30
@@ -37,6 +48,10 @@ targets:
     url: https://zorocloud.com/index.php/store/jp-cn2-pro
     region: JP
     provider_claimed_routes: [CN2]
+    reliability: 6
+    oversell: medium
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 40, bandwidth_gbps: 0.5}
+  # ============ HostDare ============
   - id: hostdare-cssd3
     <<: *target_defaults
     priority: 40
@@ -48,6 +63,10 @@ targets:
     url: https://bill.hostdare.com/store/premium-china-optimized-nvme-kvm
     region: US
     provider_claimed_routes: [CN2 GIA]
+    reliability: 7
+    oversell: medium
+    reliability_note: CN2 GIA 老牌，社区口碑稳定，偶有限速反馈
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 100, bandwidth_gbps: 0.8}
   - id: hostdare-camd3
     <<: *target_defaults
     priority: 50
@@ -59,6 +78,10 @@ targets:
     url: https://bill.hostdare.com/store/premium-china-optimized-amd-kvm-vps-usa
     region: US
     provider_claimed_routes: [CN2 GIA]
+    reliability: 7
+    oversell: medium
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 80, bandwidth_gbps: 0.8}
+  # ============ BandwagonHost ============
   - id: bandwagon-osaka-40g
     <<: *target_defaults
     priority: 60
@@ -70,6 +93,25 @@ targets:
     url: https://bandwagonhost.com/cart.php?productFilter=2
     region: JP
     provider_claimed_routes: [CN2 GIA, China Unicom, China Mobile]
+    reliability: 8
+    oversell: none
+    reliability_note: 老牌 CN2 GIA，社区口碑好，无超售争议
+    specs: {cpu: 1, ram_gb: 0.5, storage_gb: 40, bandwidth_gbps: 0.5}
+  - id: bandwagon-cn2-gia-10g
+    <<: *target_defaults
+    priority: 65
+    expected_domains: [bandwagonhost.com]
+    expected_currencies: [USD]
+    provider: BandwagonHost
+    plan_name: CN2 GIA-E 10G KVM PROMO
+    plan_tokens: [CN2 GIA-E, 10G KVM PROMO, 10 GB]
+    url: https://bandwagonhost.com/cart.php?productFilter=1
+    region: US
+    provider_claimed_routes: [CN2 GIA-E]
+    reliability: 8
+    oversell: none
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.5}
+  # ============ Jtti ============
   - id: jtti-us-cn2
     <<: *target_defaults
     priority: 70
@@ -81,6 +123,10 @@ targets:
     url: https://www.jtti.cc/zh/usa_ecs.html
     region: US
     provider_claimed_routes: [CN2 GIA, CUG, CMI]
+    reliability: 5
+    oversell: medium
+    reliability_note: 营销力度大，社区口碑一般，客服响应慢
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 50, bandwidth_gbps: 0.5}
   - id: jtti-jp-optimized
     <<: *target_defaults
     priority: 80
@@ -92,6 +138,10 @@ targets:
     url: https://www.jtti.cc/zh/jp_ecs.html
     region: JP
     provider_claimed_routes: [中国优化, CMI, CUG]
+    reliability: 5
+    oversell: medium
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 50, bandwidth_gbps: 0.5}
+  # ============ RackNerd ============
   - id: racknerd-4gb-special
     <<: *target_defaults
     priority: 90
@@ -100,9 +150,28 @@ targets:
     provider: RackNerd
     plan_name: 4GB RAM KVM VPS
     plan_tokens: [4GB RAM KVM VPS, 4x vCPU, 55 GB SSD]
-    url: https://my.racknerd.com/index.php?rp=/store/august-special-promotions
+    url: https://my.racknerd.com/index.php?rp=/store/august-special-promotions#plan-4gb
     region: US
     provider_claimed_routes: [BGP]
+    reliability: 8
+    oversell: low
+    reliability_note: 北美性价比标杆，社区口碑好，仅节假日促销
+    specs: {cpu: 4, ram_gb: 4, storage_gb: 55, bandwidth_gbps: 3}
+  - id: racknerd-2gb-special
+    <<: *target_defaults
+    priority: 95
+    expected_domains: [my.racknerd.com]
+    expected_currencies: [USD]
+    provider: RackNerd
+    plan_name: 2GB RAM KVM VPS
+    plan_tokens: [2GB RAM KVM VPS, 2x vCPU, 35 GB SSD]
+    url: https://my.racknerd.com/index.php?rp=/store/august-special-promotions#plan-2gb
+    region: US
+    provider_claimed_routes: [BGP]
+    reliability: 8
+    oversell: low
+    specs: {cpu: 2, ram_gb: 2, storage_gb: 35, bandwidth_gbps: 2.5}
+  # ============ CloudCone ============
   - id: cloudcone-ssd-vps-4
     <<: *target_defaults
     priority: 100
@@ -114,6 +183,25 @@ targets:
     url: https://app.cloudcone.com/vps/358/create?token=ssd-vps-4
     region: US
     provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: medium
+    reliability_note: 按小时计费特色，黑五促销多，社区口碑中等
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 80, bandwidth_gbps: 4}
+  - id: cloudcone-ssd-vps-2
+    <<: *target_defaults
+    priority: 105
+    expected_domains: [app.cloudcone.com]
+    expected_currencies: [USD]
+    provider: CloudCone
+    plan_name: SSD-VPS-2
+    plan_tokens: [SSD-VPS-2, 2 TB]
+    url: https://app.cloudcone.com/vps/357/create?token=ssd-vps-2
+    region: US
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: medium
+    specs: {cpu: 1, ram_gb: 2, storage_gb: 40, bandwidth_gbps: 2}
+  # ============ BuyVM ============
   - id: buyvm-slice4096
     <<: *target_defaults
     priority: 110
@@ -122,9 +210,28 @@ targets:
     provider: BuyVM
     plan_name: SLICE 4096
     plan_tokens: [SLICE 4096, 4096 MB, 80 GB SSD]
-    url: https://buyvm.net/kvm-dedicated-server-slices
+    url: https://buyvm.net/kvm-dedicated-server-slices#slice4096
     region: US/EU
     provider_claimed_routes: [BGP]
+    reliability: 9
+    oversell: none
+    reliability_note: Frantech 旗下，社区口碑极好，不超售
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 80, bandwidth_gbps: 2}
+  - id: buyvm-slice2048
+    <<: *target_defaults
+    priority: 115
+    expected_domains: [buyvm.net]
+    expected_currencies: [USD]
+    provider: BuyVM
+    plan_name: SLICE 2048
+    plan_tokens: [SLICE 2048, 2048 MB, 40 GB SSD]
+    url: https://buyvm.net/kvm-dedicated-server-slices#slice2048
+    region: US/EU
+    provider_claimed_routes: [BGP]
+    reliability: 9
+    oversell: none
+    specs: {cpu: 1, ram_gb: 2, storage_gb: 40, bandwidth_gbps: 1}
+  # ============ GreenCloud ============
   - id: greencloud-budgetkvmhk2-3
     <<: *target_defaults
     priority: 120
@@ -136,6 +243,11 @@ targets:
     url: https://greencloudvps.com/billing/store/budget-kvm-sale?language=english
     region: HK
     provider_claimed_routes: [BGP]
+    reliability: 5
+    oversell: high
+    reliability_note: 黑五促销多但超售争议大，社区口碑两极
+    specs: {cpu: 4, ram_gb: 8, storage_gb: 60, bandwidth_gbps: 2}
+  # ============ LayerStack ============
   - id: layerstack-r108
     <<: *target_defaults
     priority: 130
@@ -147,6 +259,25 @@ targets:
     url: https://www.layerstack.com/en/printable-cloud-servers/hk/standard
     region: HK
     provider_claimed_routes: [CN2 China Direct Route]
+    reliability: 7
+    oversell: low
+    reliability_note: 云平台正规，香港 CN2 直连，价格偏高
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 150, bandwidth_gbps: 1}
+  - id: layerstack-r111
+    <<: *target_defaults
+    priority: 135
+    expected_domains: [layerstack.com]
+    expected_currencies: [USD]
+    provider: LayerStack
+    plan_name: R111
+    plan_tokens: [R111, 8GiB, 4 vCPU, 300GiB]
+    url: https://www.layerstack.com/en/printable-cloud-servers/jp/standard
+    region: JP
+    provider_claimed_routes: [CN2 China Direct Route]
+    reliability: 7
+    oversell: low
+    specs: {cpu: 4, ram_gb: 8, storage_gb: 300, bandwidth_gbps: 2}
+  # ============ LisaHost ============
   - id: lisahost-us-9929-annual
     <<: *target_defaults
     priority: 140
@@ -158,3 +289,177 @@ targets:
     url: https://lisahost.com/cart.php?gid=29
     region: US
     provider_claimed_routes: [AS9929]
+    reliability: 5
+    oversell: medium
+    reliability_note: 国内商家，9929 线路性价比高，口碑中等
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.5}
+  # ============ CloudIPLC（新）============
+  - id: cloudiplc-quanzhou-cn2
+    <<: *target_defaults
+    priority: 150
+    expected_domains: [cloudiplc.com]
+    expected_currencies: [CNY, USD]
+    provider: CloudIPLC
+    plan_name: 泉州 CN2 特价
+    plan_tokens: [泉州, CN2]
+    url: https://www.cloudiplc.com/cart.php?gid=1
+    region: CN
+    provider_claimed_routes: [CN2]
+    reliability: 8
+    oversell: low
+    reliability_note: 泉州 CN2 老牌，社区口碑好，线路稳定
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.5}
+  - id: cloudiplc-la-cn2
+    <<: *target_defaults
+    priority: 155
+    expected_domains: [cloudiplc.com]
+    expected_currencies: [CNY, USD]
+    provider: CloudIPLC
+    plan_name: 洛杉矶 CN2 特价
+    plan_tokens: [洛杉矶, CN2]
+    url: https://www.cloudiplc.com/cart.php?gid=2
+    region: US
+    provider_claimed_routes: [CN2]
+    reliability: 8
+    oversell: low
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.5}
+  # ============ V.PS（新）============
+  - id: vps-hk-cn2-gia
+    <<: *target_defaults
+    priority: 160
+    expected_domains: [vps.hosting]
+    expected_currencies: [EUR, USD]
+    provider: V.PS
+    plan_name: Hong Kong CN2 GIA
+    plan_tokens: [Hong Kong, CN2 GIA]
+    url: https://vps.hosting/cart/hong-kong/
+    region: HK
+    provider_claimed_routes: [CN2 GIA]
+    reliability: 7
+    oversell: low
+    reliability_note: 欧洲商家，香港/东京 CN2 GIA 口碑中上
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 20, bandwidth_gbps: 0.3}
+  - id: vps-tokyo-cn2
+    <<: *target_defaults
+    priority: 165
+    expected_domains: [vps.hosting]
+    expected_currencies: [EUR, USD]
+    provider: V.PS
+    plan_name: Tokyo CN2
+    plan_tokens: [Tokyo, CN2]
+    url: https://vps.hosting/cart/tokyo/
+    region: JP
+    provider_claimed_routes: [CN2]
+    reliability: 7
+    oversell: low
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 20, bandwidth_gbps: 0.3}
+  # ============ HostHatch（新）============
+  - id: hosthatch-la-nvme
+    <<: *target_defaults
+    priority: 170
+    expected_domains: [cloud.hosthatch.com]
+    expected_currencies: [USD]
+    provider: HostHatch
+    plan_name: Los Angeles NVMe
+    plan_tokens: [Los Angeles, NVMe]
+    url: https://cloud.hosthatch.com/
+    region: US
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: medium
+    reliability_note: 性价比高，社区口碑中等，促销少
+    specs: {cpu: 1, ram_gb: 2, storage_gb: 40, bandwidth_gbps: 1}
+  # ============ Contabo（新）============
+  - id: contabo-vps-m
+    <<: *target_defaults
+    priority: 175
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS M
+    plan_tokens: [VPS M, vCPU, RAM]
+    url: https://contabo.com/en/vps/
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 4, ram_gb: 8, storage_gb: 50, bandwidth_gbps: 0.5}
+  # ============ DMIT（新）============
+  - id: dmit-lax-pro
+    <<: *target_defaults
+    priority: 180
+    expected_domains: [dmit.io]
+    expected_currencies: [USD]
+    provider: DMIT
+    plan_name: PVM.LAX.Pro
+    plan_tokens: [PVM.LAX.Pro, CN2 GIA]
+    url: https://www.dmit.io/pages/pricing#lax-pro
+    region: US
+    provider_claimed_routes: [CN2 GIA]
+    reliability: 9
+    oversell: none
+    reliability_note: 高端 CN2 GIA/CMIN2，社区口碑极好，价格高
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 20, bandwidth_gbps: 0.3}
+  - id: dmit-sjc-pro
+    <<: *target_defaults
+    priority: 185
+    expected_domains: [dmit.io]
+    expected_currencies: [USD]
+    provider: DMIT
+    plan_name: PVM.SJC.Pro
+    plan_tokens: [PVM.SJC.Pro, CN2 GIA]
+    url: https://www.dmit.io/pages/pricing#sjc-pro
+    region: US
+    provider_claimed_routes: [CN2 GIA]
+    reliability: 9
+    oversell: none
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 20, bandwidth_gbps: 0.3}
+  # ============ SpartanHost（新）============
+  - id: spartanhost-la-cn2
+    <<: *target_defaults
+    priority: 190
+    expected_domains: [spartantech.com]
+    expected_currencies: [USD]
+    provider: SpartanHost
+    plan_name: 洛杉矶 CN2 GIA
+    plan_tokens: [CN2 GIA, 洛杉矶]
+    url: https://billing.spartantech.com/cart.php?gid=1
+    region: US
+    provider_claimed_routes: [CN2 GIA]
+    reliability: 8
+    oversell: low
+    reliability_note: 洛杉矶 CN2 GIA 口碑好，工单响应快
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.3}
+  # ============ ion（新）============
+  - id: ion-la-cn2
+    <<: *target_defaults
+    priority: 195
+    expected_domains: [ionvps.com]
+    expected_currencies: [USD]
+    provider: ion
+    plan_name: 洛杉矶 CN2 VPS
+    plan_tokens: [Los Angeles, CN2]
+    url: https://ionvps.com/cart.php?gid=1
+    region: US
+    provider_claimed_routes: [CN2]
+    reliability: 5
+    oversell: medium
+    reliability_note: 廉价 CN2，社区口碑一般，性能波动
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.3}
+  # ============ PacificRack（新，低分示例）============
+  - id: pacificrack-special
+    <<: *target_defaults
+    priority: 200
+    expected_domains: [pacificrack.com]
+    expected_currencies: [USD]
+    provider: PacificRack
+    plan_name: 特价 VPS
+    plan_tokens: [VPS, Special]
+    url: https://pacificrack.com/portal/
+    region: US
+    provider_claimed_routes: [BGP]
+    reliability: 2
+    oversell: high
+    reliability_note: 用户点名避坑：口碑差、超售严重、客服难联系
+    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.3}

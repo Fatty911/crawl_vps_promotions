@@ -31,6 +31,7 @@ AUTHORIZED_PATHS = {
     "scripts/write_diagnosis_issue.py",
     "scripts/watchdog_check.py",
     "scripts/self_repair_runner_vps.py",
+    "scripts/fetch_deals.py",
     "vps_monitor/verify.py",
     ".github/workflows/vps-diagnosis.yml",
     ".github/workflows/vps-repair.yml",
@@ -48,8 +49,10 @@ AUTHORIZED_PATHS = {
     "tests/test_classify_vps_failure.py",
     "tests/test_watchdog.py",
     "tests/test_verify.py",
+    "tests/test_v4_extension.py",
     "docs/operations.md",
     "docs/schema.md",
+    "docs/scoring_rationale.md",
 }
 AUTHORIZED_PREFIXES = ("tests/fixtures/",)
 GENERATED_PREFIXES = ("site/", "out/", "state/", "raw/", ".cache/",)

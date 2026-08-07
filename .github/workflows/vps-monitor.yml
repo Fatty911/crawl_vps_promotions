@@ -79,6 +79,8 @@ jobs:
           path: state
           if-no-files-found: warn
           retention-days: 30
+      - name: Fetch review/AFF deal intel
+        run: python -m vps_monitor.monitor --deals --site-dir site
       - name: Structural publish gate
         run: python -m vps_monitor.monitor --structure-gate
       - name: Upload audit evidence

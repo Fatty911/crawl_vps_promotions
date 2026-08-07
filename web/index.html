@@ -7,25 +7,48 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header><h1>VPS 优惠监控</h1><p id="batch-summary">正在读取本轮批次…</p></header>
+  <header>
+    <h1>VPS 优惠监控</h1>
+    <p id="batch-summary">正在读取本轮批次…</p>
+  </header>
   <section id="state" data-state="loading" aria-live="polite">loading</section>
   <section class="filters" aria-label="筛选">
+    <label>搜索<input id="search-box" type="search" placeholder="服务商/套餐/线路/评分"></label>
     <label>服务商<select id="provider-filter"><option value="">全部</option></select></label>
     <label>状态<select id="outcome-filter"><option value="">全部</option></select></label>
     <label>地区<input id="region-filter" type="search" placeholder="地区"></label>
     <label>币种<select id="currency-filter"><option value="">全部</option></select></label>
     <label>账期<select id="billing-filter"><option value="">全部</option></select></label>
     <label>库存<select id="availability-filter"><option value="">全部</option></select></label>
-    <label>排序<select id="sort-order"><option value="updated">更新时间</option><option value="monthly">同币种月化</option><option value="amount">原始金额</option></select></label>
+    <label>线路<select id="route-filter"><option value="">全部</option></select></label>
+    <label>最低可靠评分<select id="reliability-filter">
+      <option value="0">不限</option><option value="5">≥5</option><option value="6">≥6</option>
+      <option value="7">≥7</option><option value="8">≥8</option><option value="9">≥9</option>
+    </select></label>
+    <label>排序<select id="sort-order">
+      <option value="updated">更新时间</option>
+      <option value="value">性价比优先</option>
+      <option value="reliability">可靠性优先</option>
+      <option value="monthly">同币种月化</option>
+      <option value="amount">原始金额</option>
+    </select></label>
+    <button id="export-csv" type="button">导出 CSV</button>
   </section>
   <main>
     <div id="cards" class="cards"></div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>服务商</th><th>套餐</th><th>地区</th><th>状态</th><th>原价/周期</th><th>同币种月化</th><th>库存</th><th>原因</th></tr></thead>
+        <thead><tr>
+          <th>服务商</th><th>套餐</th><th>地区</th><th>状态</th><th>原价/周期</th>
+          <th>月化</th><th>性价比</th><th>可靠性</th><th>超售</th><th>库存</th><th>原因</th>
+        </tr></thead>
         <tbody id="status-body"></tbody>
       </table>
     </div>
+    <section class="trend-panel" aria-label="历史趋势">
+      <label>价格趋势<select id="trend-task"><option value="">选择套餐</option></select></label>
+      <div id="trend-chart" class="trend-chart"></div>
+    </section>
     <section class="history-panel" aria-label="历史">
       <button id="history-load" type="button">按需加载历史</button>
       <ol id="history-list"></ol>
@@ -34,6 +57,11 @@
         <span id="history-page">未加载</span>
         <button id="history-next" type="button" disabled>下一页</button>
       </div>
+    </section>
+    <section class="deals-panel" aria-label="测评站优惠情报">
+      <h2>测评站优惠情报（LowEndBox / LowEndTalk）</h2>
+      <p class="deals-note">来源为社区测评/AFF 站 RSS，仅作线索；不构成购买建议，链接为原文。</p>
+      <ol id="deals-list"></ol>
     </section>
   </main>
   <script src="app.js" defer></script>
