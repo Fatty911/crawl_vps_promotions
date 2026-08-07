@@ -68,6 +68,7 @@ def test_live_crawl_sets_up_mihomo_rotation_with_direct_fallback():
     setup_step = next(step for step in steps if step.get("name") == "Configure mihomo node-rotation runtime")
     assert setup_step["env"]["PROXY_SUBSCRIPTIONS"] == "${{ secrets.PROXY_SUBSCRIPTIONS }}"
     assert "setup_proxy_runtime.py" in setup_step["run"]
+    assert "--test-url" in setup_step["run"]
     # Direct fallback stays possible when mihomo is unavailable.
     raw = WORKFLOW.read_text(encoding="utf-8")
     assert "mihomo runtime unavailable; monitor will run direct" in raw
