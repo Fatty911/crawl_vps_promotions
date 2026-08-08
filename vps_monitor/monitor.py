@@ -1464,9 +1464,16 @@ def browser_fetch(url: str) -> HTTPFetch:
         return HTTPFetch(
             "", "error", None, url, "browser", "playwright_not_installed", 1, 0
         )
+    proxy_url = os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or ""
+    rotator = _get_rotator()
+    if rotator:
+        rotator.rotate()
+    launch_kwargs: dict[str, Any] = {}
+    if proxy_url and "127.0.0.1" in proxy_url:
+        launch_kwargs["proxy"] = {"server": proxy_url}
     try:
         with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True)
+            browser = playwright.chromium.launch(headless=True, **launch_kwargs)
             try:
                 page = browser.new_page(locale="zh-CN")
                 response = page.goto(
@@ -1485,6 +1492,11 @@ def browser_fetch(url: str) -> HTTPFetch:
                     ),
                     None,
                 )
+                if rotator:
+                    if block_reason:
+                        _mark_rotator_failure(rotator, blocked=True)
+                    else:
+                        _mark_rotator_success(rotator)
                 return HTTPFetch(
                     markup,
                     "blocked" if block_reason else "success",
@@ -1498,6 +1510,8 @@ def browser_fetch(url: str) -> HTTPFetch:
             finally:
                 browser.close()
     except Exception as exc:
+        if rotator:
+            _mark_rotator_failure(rotator)
         return HTTPFetch(
             "", "error", None, url, "browser",
             f"browser:{type(exc).__name__}", 1,

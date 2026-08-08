@@ -216,6 +216,99 @@ def test_rotator_activates_with_local_mihomo_proxy(monkeypatch, tmp_path):
     monkeypatch.setattr(monitor_mod, "_rotator", None)
 
 
+def test_browser_fetch_uses_proxy_and_rotation(monkeypatch):
+    """browser_fetch must launch chromium with the mihomo proxy when active
+    and rotate nodes before each browser session."""
+    import vps_monitor.monitor as monitor_mod
+
+    calls = {"rotate": 0, "launch_kwargs": None, "marked": []}
+
+    class FakePlaywright:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        @property
+        def chromium(self):
+            return self
+
+        def launch(self, headless=True, **kwargs):
+            calls["launch_kwargs"] = kwargs
+            return FakeBrowser(calls)
+
+    class FakeBrowser:
+        def __init__(self, calls):
+            self.calls = calls
+
+        def new_page(self, **kw):
+            return FakePage()
+
+        def close(self):
+            pass
+
+    class FakePage:
+        def goto(self, url, **kw):
+            return type("R", (), {"status": 200})()
+
+        def content(self):
+            return "<html>HostDare KVM VPS $20/year</html>"
+
+        @property
+        def url(self):
+            return "https://x.example/"
+
+    class FakeRotator:
+        def __init__(self, *a, **k):
+            self._active_node = "n1"
+            self._nodes = ["n1", "n2"]
+
+        def discover_nodes(self):
+            self._enabled = True
+
+        @property
+        def enabled(self):
+            return True
+
+        @property
+        def node_count(self):
+            return len(self._nodes)
+
+        def rotate(self):
+            calls["rotate"] += 1
+
+        def mark_failure(self, node, blocked=False):
+            calls["marked"].append(("fail", node, blocked))
+
+        def mark_success(self, node):
+            calls["marked"].append(("ok", node))
+
+    import types
+
+    fake_mod = types.ModuleType("sync_playwright")
+    fake_mod.sync_playwright = lambda: FakePlaywright()
+    monkeypatch.setitem(__import__("sys").modules, "sync_playwright", fake_mod)
+    # monitor.py binds `from playwright.sync_api import sync_playwright` at
+    # import time, so patch the module attribute directly as well.
+    monkeypatch.setattr(monitor_mod, "sync_playwright", lambda: FakePlaywright())
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:7890")
+    monkeypatch.setattr(monitor_mod, "_rotator", None)
+
+    class FakeNodeRotatorModule(types.ModuleType):
+        NodeRotator = FakeRotator
+
+    fake_rot_mod = FakeNodeRotatorModule("node_rotator")
+    monkeypatch.setitem(__import__("sys").modules, "node_rotator", fake_rot_mod)
+
+    result = monitor_mod.browser_fetch("https://x.example/")
+    assert result.outcome == "success"
+    assert calls["rotate"] == 1
+    assert calls["launch_kwargs"] == {"proxy": {"server": "http://127.0.0.1:7890"}}
+    assert ("ok", "n1") in calls["marked"]
+    monkeypatch.setattr(monitor_mod, "_rotator", None)
+
+
 def test_vps_monitor_workflow_runs_deals_before_structural_gate():
     wf = (ROOT / ".github/workflows/vps-monitor.yml").read_text(encoding="utf-8")
     # Deals are fetched inline during the live round (publish_site writes
