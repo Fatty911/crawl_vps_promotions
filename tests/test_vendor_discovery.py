@@ -148,6 +148,19 @@ def test_runner_pushes_after_commit():
     assert commit_pos < push_pos
 
 
+def test_runner_sets_git_identity_and_checks_commit():
+    """GitHub Actions checkouts have no git identity; commit must set
+    user.name/email first and check the commit returncode (a silent failed
+    commit makes push report 'Everything up-to-date' and fakes success —
+    observed 2026-08-08)."""
+    src = (ROOT / "scripts/vendor_extend_runner.py").read_text(encoding="utf-8")
+    assert '_sh(["git", "config", "user.name", "hermes-agent-deepseek-v4-flash"], cwd=ROOT)' in src
+    assert '_sh(["git", "config", "user.email", "xuerui911@gmail.com"], cwd=ROOT)' in src
+    assert 'committed = _sh(["git", "commit", "-m", message], cwd=ROOT)' in src
+    assert 'if committed.returncode != 0:' in src
+    assert "commit failed" in src
+
+
 def test_extract_text_parts_from_ndjson():
     """--format json NDJSON must be parsed into the assistant text only."""
     import sys

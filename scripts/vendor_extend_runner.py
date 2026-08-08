@@ -376,8 +376,17 @@ def main() -> int:
         f"Review-Result-{i + 1}: {r['verdict']}"
         for i, r in enumerate(reviews)
     )
+    # GitHub Actions checkouts have no git identity configured; set it
+    # (Fatty911 author rules) so the commit does not fail with
+    # "Please tell me who you are".
+    _sh(["git", "config", "user.name", "hermes-agent-deepseek-v4-flash"], cwd=ROOT)
+    _sh(["git", "config", "user.email", "xuerui911@gmail.com"], cwd=ROOT)
     message = f"feat(vendor-extend): 自动扩展厂商 {[t['provider'] for t in valid]}\n\n{trailers}\nReviewed-Diff-SHA256: {diff_sha}"
-    _sh(["git", "commit", "-m", message], cwd=ROOT)
+    committed = _sh(["git", "commit", "-m", message], cwd=ROOT)
+    if committed.returncode != 0:
+        print(f"[vendor-extend] commit failed: {committed.stderr[:300]}", file=sys.stderr)
+        _sh(["git", "reset", "-q", "HEAD", str(args.providers)], cwd=ROOT)
+        return 8
     # Push to main. GITHUB_TOKEN is set by the workflow (contents: write);
     # the checkout already has the origin remote with token auth.
     push = _sh(["git", "push", "origin", "HEAD:main"], cwd=ROOT)
