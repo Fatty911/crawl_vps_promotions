@@ -137,6 +137,9 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 6000) -> str | 
         except subprocess.TimeoutExpired:
             print(f"[vendor-extend] opencode timeout ({provider['name']})", file=sys.stderr)
             return None
+        stdout_len = len(completed.stdout or "")
+        print(f"[vendor-extend] opencode {provider['name']} exit={completed.returncode} "
+              f"stdout={stdout_len} stderr={(completed.stderr or '')[:200]!r}", file=sys.stderr)
         if completed.returncode != 0:
             print(f"[vendor-extend] opencode exit {completed.returncode}: "
                   f"{(completed.stderr or '')[:300]}", file=sys.stderr)
