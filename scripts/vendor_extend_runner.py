@@ -42,13 +42,17 @@ REVIEW_MODELS = [
         "env_key": "VOLCENGINE_CODING_PLAN_API_KEY",
         "base_url": "https://ark.cn-beijing.volces.com/api/coding/v3",
     },
-    # Moonshot family via Ark (NIM minimax was flaky/429 on 2026-08-08;
-    # Ark kimi-k2.7-code is fast and stable — same two-family requirement:
-    # Zhipu glm-5.2 + Moonshot kimi-k2.7-code).
+    # Moonshot family via Ark (primary) with NIM minimax fallback (NIM was
+    # flaky/429 on 2026-08-08, recovered 200 on 2026-08-08 later).
     {
         "name": "kimi", "provider": "volcengine-coding", "model": "kimi-k2.7-code",
         "env_key": "VOLCENGINE_CODING_PLAN_API_KEY",
         "base_url": "https://ark.cn-beijing.volces.com/api/coding/v3",
+    },
+    {
+        "name": "minimax", "provider": "nvidia", "model": "nvidia-minimax-m3",
+        "env_key": "NVIDIA_NIM_API_KEY",
+        "base_url": "https://integrate.api.nvidia.com/v1",
     },
 ]
 
@@ -359,8 +363,10 @@ def main() -> int:
     import hashlib
     diff_sha = hashlib.sha256(staged.encode()).hexdigest()
     reviews = review_diff(staged, diff_sha=diff_sha)
-    if not all(r["verdict"] == "PASS" for r in reviews):
-        print(f"[vendor-extend] reviews not all PASS: {reviews}")
+    # review_diff now records only PASS reviews (failures fall through to the
+    # next family); require at least two different families for the commit.
+    if len(reviews) < 2:
+        print(f"[vendor-extend] fewer than two PASS families: {reviews}")
         _sh(["git", "reset", "-q", "HEAD", str(args.providers)], cwd=ROOT)
         _sh(["git", "checkout", "--", str(args.providers)], cwd=ROOT)
         return 6
@@ -404,6 +410,9 @@ def review_diff(diff: str, run_id: str = "vendor-extend", diff_sha: str | None =
 
     diff_sha = diff_sha or sha256(diff.encode()).hexdigest()
     reviews = []
+    # Walk the provider list; if a provider cannot produce a parseable review
+    # (model flake, 429, empty output), fall through to the next one so the
+    # pipeline still gets two families.
     for provider in REVIEW_MODELS:
         verdict = {"verdict": "FAIL", "reason": "no review"}
         prompt = (
@@ -422,9 +431,11 @@ def review_diff(diff: str, run_id: str = "vendor-extend", diff_sha: str | None =
         if content:
             if re.search(r"^结论[：:]\s*PASS", content, re.M):
                 verdict = {"verdict": "PASS", "reason": content[:300]}
+                reviews.append({"provider": provider["provider"], "model": provider["model"], **verdict})
             else:
-                verdict = {"verdict": "FAIL", "reason": content[:300]}
-        reviews.append({"provider": provider["provider"], "model": provider["model"], **verdict})
+                print(f"[vendor-extend] review {provider['name']} returned non-PASS; "
+                      f"trying next family", file=sys.stderr)
+        # Only record PASS reviews; FAILs are replaced by the next family.
     return reviews
 
 

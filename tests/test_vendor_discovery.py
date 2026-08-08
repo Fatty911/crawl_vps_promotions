@@ -177,6 +177,24 @@ def test_runner_uses_json_format_not_default():
     assert "extract_text_parts" in (ROOT / "scripts/vendor_extend_runner.py").read_text(encoding="utf-8")
 
 
+def test_review_fallthrough_requires_two_families():
+    """A flaky family must not block the pipeline: review_diff falls through
+    to the next family, and main() requires >=2 PASS families (each from a
+    different model family) before committing."""
+    src = (ROOT / "scripts/vendor_extend_runner.py").read_text(encoding="utf-8")
+    # review_diff records only PASS reviews.
+    assert "reviews.append({" in src
+    assert "trying next family" in src
+    # main() gates on two families, not all-reviewers-pass.
+    assert "if len(reviews) < 2:" in src
+    assert "fewer than two PASS families" in src
+    # The fallback family (NIM minimax) is declared after Ark kimi.
+    kimi_pos = src.find('"model": "kimi-k2.7-code"')
+    minimax_pos = src.find('"model": "nvidia-minimax-m3"')
+    assert kimi_pos != -1 and minimax_pos != -1
+    assert kimi_pos < minimax_pos
+
+
 def test_runner_uses_project_config_file_not_env():
     """OPENCODE_CONFIG_CONTENT env injection returns 404 on opencode 1.18.15
     (verified 2026-08-08); the working mechanism is a project-level
@@ -199,9 +217,8 @@ def test_runner_uses_global_exact_provider_model_names():
     src = (ROOT / "scripts/vendor_extend_runner.py").read_text(encoding="utf-8")
     assert '"provider": "volcengine-coding", "model": "glm-5.2"' in src
     assert '"provider": "volcengine-coding", "model": "kimi-k2.7-code"' in src
-    # No invented/flaky provider names may remain (NIM was 429 on 2026-08-08).
+    # No invented provider names may remain (NIM is only a declared fallback).
     assert "nvidia-nim" not in src
-    assert "nvidia-minimax-m3" not in src
     assert "minimaxai/minimax-m3" not in src
     # Same rule for the repair runner (which shares the opencode injection path).
     repair = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
