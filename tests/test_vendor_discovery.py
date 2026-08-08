@@ -83,6 +83,9 @@ def test_vendor_workflow_declares_schedule_and_auto_gate():
     assert "Discover new vendor candidates" in steps
     assert "AI-extend vendors (validated + reviewed + committed)" in steps
     assert "Report candidates as issue (discovery only)" in steps
+    # The AI-extend path needs the opencode CLI on the runner.
+    assert "Install OpenCode CLI" in steps
+    assert "npm install --global opencode-ai@latest" in raw
 
 
 def test_runner_scripts_registered_in_gate():
