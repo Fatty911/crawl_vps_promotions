@@ -137,6 +137,17 @@ def test_runner_stages_before_hashes_diff():
     assert add_pos < diff_pos
 
 
+def test_runner_pushes_after_commit():
+    """The runner must push to main after commit (a local-only commit leaves
+    the repo stale; verified 2026-08-08 when the first auto-extend run
+    committed on the runner but never reached GitHub)."""
+    src = (ROOT / "scripts/vendor_extend_runner.py").read_text(encoding="utf-8")
+    commit_pos = src.find('_sh(["git", "commit", "-m", message], cwd=ROOT)')
+    push_pos = src.find('_sh(["git", "push", "origin", "HEAD:main"], cwd=ROOT)')
+    assert commit_pos != -1 and push_pos != -1
+    assert commit_pos < push_pos
+
+
 def test_runner_uses_project_config_file_not_env():
     """OPENCODE_CONFIG_CONTENT env injection returns 404 on opencode 1.18.15
     (verified 2026-08-08); the working mechanism is a project-level

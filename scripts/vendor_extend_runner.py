@@ -349,7 +349,13 @@ def main() -> int:
     )
     message = f"feat(vendor-extend): 自动扩展厂商 {[t['provider'] for t in valid]}\n\n{trailers}\nReviewed-Diff-SHA256: {diff_sha}"
     _sh(["git", "commit", "-m", message], cwd=ROOT)
-    print(f"[vendor-extend] committed: {[t['provider'] for t in valid]}")
+    # Push to main. GITHUB_TOKEN is set by the workflow (contents: write);
+    # the checkout already has the origin remote with token auth.
+    push = _sh(["git", "push", "origin", "HEAD:main"], cwd=ROOT)
+    if push.returncode != 0:
+        print(f"[vendor-extend] push failed: {push.stderr[:300]}", file=sys.stderr)
+        return 7
+    print(f"[vendor-extend] committed+push: {[t['provider'] for t in valid]}")
     return 0
 
 
