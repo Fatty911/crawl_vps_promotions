@@ -30,6 +30,12 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 MAX_NEW_VENDORS = int(os.environ.get("VENDOR_MAX_NEW", "3"))
+# Provider names and model IDs MUST match the global opencode config exactly:
+# opencode 1.18.x only lets config injection override providers/models that are
+# already declared (whitelist + models). Verified 2026-08-08 on opencode 1.18.15:
+#   - volcengine-coding/glm-5.2          (global opencode.json) works
+#   - nvidia/nvidia-minimax-m3           (global opencode.json) works
+#   - arbitrary new provider names       -> ProviderModelNotFoundError
 REVIEW_MODELS = [
     {
         "name": "glm", "provider": "volcengine-coding", "model": "glm-5.2",
@@ -37,7 +43,7 @@ REVIEW_MODELS = [
         "base_url": "https://ark.cn-beijing.volces.com/api/coding/v3",
     },
     {
-        "name": "minimax", "provider": "nvidia-nim", "model": "minimaxai/minimax-m3",
+        "name": "minimax", "provider": "nvidia", "model": "nvidia-minimax-m3",
         "env_key": "NVIDIA_NIM_API_KEY",
         "base_url": "https://integrate.api.nvidia.com/v1",
     },
@@ -105,14 +111,15 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 6000) -> str | 
     env["OPENCODE_DISABLE_TELEMETRY"] = "1"
     opencode_bin = os.environ.get("OPENCODE_BIN", "opencode")
     with tempfile.TemporaryDirectory(prefix="vendor-extend-") as tmpdir:
-        (Path(tmpdir) / "prompt.md").write_text(prompt, encoding="utf-8")
+        # Pass the prompt as a positional message (subprocess list-args, no
+        # shell quoting issues). --file is an attachment, not a message source.
         cmd = [
             opencode_bin, "run", "--pure", "--agent", "plan",
             "--model", f"{provider['name']}/{provider['model']}",
             "--format", "default",
             "--dir", tmpdir,
-            "--file", "prompt.md",
-            "Answer the attached prompt directly. Do not call tools or modify files. Return only the requested JSON.",
+            "Answer the attached prompt directly. Do not call tools or modify files. "
+            "Return only the requested JSON.\n\n" + prompt,
         ]
         try:
             completed = subprocess.run(cmd, capture_output=True, text=True, timeout=900, env=env)

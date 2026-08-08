@@ -50,18 +50,22 @@ REVIEW_TRAILER_DIFF = "Reviewed-Diff-SHA256"
 
 # Two different families, verified available on NIM (2026-08-07):
 # z-ai/glm-5.2 (Zhipu) and minimaxai/minimax-m3 (MiniMax).
+# Provider names/model IDs MUST match the global opencode config exactly:
+# opencode 1.18.x only lets config injection override already-declared
+# providers/models (verified 2026-08-08 on opencode 1.18.15). The global
+# opencode.json declares nvidia models as nvidia-glm-5.2 / nvidia-minimax-m3.
 REVIEW_PROVIDERS = [
     {
-        "name": "nvidia-nim-glm",
+        "name": "nvidia",
         "base_url": "https://integrate.api.nvidia.com/v1",
         "env_key": "NVIDIA_NIM_API_KEY",
-        "model": "z-ai/glm-5.2",
+        "model": "nvidia-glm-5.2",
     },
     {
-        "name": "nvidia-nim-minimax",
+        "name": "nvidia",
         "base_url": "https://integrate.api.nvidia.com/v1",
         "env_key": "NVIDIA_NIM_API_KEY",
-        "model": "minimaxai/minimax-m3",
+        "model": "nvidia-minimax-m3",
     },
 ]
 
@@ -174,14 +178,15 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
     env["OPENCODE_DISABLE_TELEMETRY"] = "1"
     opencode_bin = os.environ.get("OPENCODE_BIN", "opencode")
     with tempfile.TemporaryDirectory(prefix="vps-repair-") as tmpdir:
-        (Path(tmpdir) / "prompt.md").write_text(prompt, encoding="utf-8")
+        # Pass the prompt as a positional message (subprocess list-args, no
+        # shell quoting issues). --file is an attachment, not a message source.
         cmd = [
             opencode_bin, "run", "--pure", "--agent", "plan",
             "--model", f"{provider['name']}/{provider['model']}",
             "--format", "default",
             "--dir", tmpdir,
-            "--file", "prompt.md",
-            "Answer the attached prompt directly. Do not call tools or modify files. Return only the requested JSON.",
+            "Answer the attached prompt directly. Do not call tools or modify files. "
+            "Return only the requested JSON.\n\n" + prompt,
         ]
         try:
             completed = subprocess.run(cmd, capture_output=True, text=True, timeout=600, env=env)

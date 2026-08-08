@@ -135,3 +135,23 @@ def test_runner_stages_before_hashes_diff():
     diff_pos = src.find('_sh(["git", "diff", "--cached", "--binary"], cwd=ROOT)')
     assert add_pos != -1 and diff_pos != -1
     assert add_pos < diff_pos
+
+
+def test_runner_uses_global_exact_provider_model_names():
+    """opencode 1.18.x config injection only overrides already-declared
+    providers/models when a global config exists; on a fresh runner the
+    injected config registers them. Use the exact global names so both
+    environments work (verified 2026-08-08 on opencode 1.18.15)."""
+    src = (ROOT / "scripts/vendor_extend_runner.py").read_text(encoding="utf-8")
+    assert '"provider": "volcengine-coding", "model": "glm-5.2"' in src
+    assert '"provider": "nvidia", "model": "nvidia-minimax-m3"' in src
+    assert '"provider": "kimi-coding-plan", "model": "k3"' in src
+    # No invented provider names may remain.
+    assert "nvidia-nim" not in src
+    assert "minimaxai/minimax-m3" not in src
+    # Same rule for the repair runner (which shares the opencode injection path).
+    repair = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
+    assert '"name": "nvidia"' in repair
+    assert "nvidia-glm-5.2" in repair
+    assert "nvidia-minimax-m3" in repair
+    assert "nvidia-nim-glm" not in repair
