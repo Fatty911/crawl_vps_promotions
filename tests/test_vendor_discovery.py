@@ -148,6 +148,35 @@ def test_runner_pushes_after_commit():
     assert commit_pos < push_pos
 
 
+def test_extract_text_parts_from_ndjson():
+    """--format json NDJSON must be parsed into the assistant text only."""
+    import sys
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from vendor_extend_runner import extract_text_parts
+
+    ndjson = (
+        '{"type":"step_start","part":{"type":"step-start"}}\n'
+        '{"type":"text","part":{"type":"text","text":"结论：PASS"}}\n'
+        '{"type":"text","part":{"type":"text","text":"DIFF_SHA256: abc"}}\n'
+        '{"type":"step_finish","part":{"type":"step-finish"}}\n'
+    )
+    assert extract_text_parts(ndjson) == "结论：PASS\nDIFF_SHA256: abc"
+    assert extract_text_parts("not json at all") == ""
+    assert extract_text_parts("") == ""
+
+
+def test_runner_uses_json_format_not_default():
+    """--format default pollutes stdout with ANSI/banner lines that break
+    JSON parsing (observed 2026-08-08: stdout=413 but no parseable targets).
+    Both runners must use --format json + NDJSON text extraction."""
+    for script in ("vendor_extend_runner.py", "self_repair_runner_vps.py"):
+        src = (ROOT / f"scripts/{script}").read_text(encoding="utf-8")
+        assert '"--format", "json"' in src
+        assert '"--format", "default"' not in src
+    assert "extract_text_parts" in (ROOT / "scripts/vendor_extend_runner.py").read_text(encoding="utf-8")
+
+
 def test_runner_uses_project_config_file_not_env():
     """OPENCODE_CONFIG_CONTENT env injection returns 404 on opencode 1.18.15
     (verified 2026-08-08); the working mechanism is a project-level

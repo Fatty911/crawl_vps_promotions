@@ -122,12 +122,13 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 6000) -> str | 
         (Path(tmpdir) / "opencode.json").write_text(
             json.dumps(config, ensure_ascii=False), encoding="utf-8"
         )
-        # Pass the prompt as a positional message (subprocess list-args, no
-        # shell quoting issues). --file is an attachment, not a message source.
+        # --format json emits NDJSON events; extract assistant text parts.
+        # --format default pollutes stdout with ANSI/banner lines that break
+        # JSON parsing (observed 2026-08-08: stdout=413 but no parseable JSON).
         cmd = [
             opencode_bin, "run", "--pure", "--agent", "plan",
             "--model", f"{provider['name']}/{provider['model']}",
-            "--format", "default",
+            "--format", "json",
             "--dir", tmpdir,
             "Answer the attached prompt directly. Do not call tools or modify files. "
             "Return only the requested JSON.\n\n" + prompt,
@@ -144,7 +145,26 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 6000) -> str | 
             print(f"[vendor-extend] opencode exit {completed.returncode}: "
                   f"{(completed.stderr or '')[:300]}", file=sys.stderr)
             return None
-        return (completed.stdout or "").strip() or None
+        return extract_text_parts(completed.stdout or "") or None
+
+
+def extract_text_parts(ndjson: str) -> str:
+    """Extract assistant text from opencode --format json NDJSON events."""
+    parts: list[str] = []
+    for line in ndjson.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            event = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        part = event.get("part") or {}
+        if event.get("type") == "text" and part.get("type") == "text":
+            text_value = part.get("text")
+            if isinstance(text_value, str) and text_value.strip():
+                parts.append(text_value)
+    return "\n".join(parts).strip()
 
 
 def build_generation_prompt(candidates: list[dict], existing_providers: list[str]) -> str:

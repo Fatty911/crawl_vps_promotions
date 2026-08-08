@@ -189,7 +189,7 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
         cmd = [
             opencode_bin, "run", "--pure", "--agent", "plan",
             "--model", f"{provider['name']}/{provider['model']}",
-            "--format", "default",
+            "--format", "json",
             "--dir", tmpdir,
             "Answer the attached prompt directly. Do not call tools or modify files. "
             "Return only the requested JSON.\n\n" + prompt,
@@ -202,7 +202,23 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
         if completed.returncode != 0:
             print(f"[vps-repair] opencode exit {completed.returncode}: {(completed.stderr or '')[:300]}", file=sys.stderr)
             return None
-        return (completed.stdout or "").strip() or None
+        # --format json emits NDJSON; extract assistant text parts (the
+        # default format pollutes stdout with ANSI/banner lines).
+        parts: list[str] = []
+        for line in (completed.stdout or "").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            part = event.get("part") or {}
+            if event.get("type") == "text" and part.get("type") == "text":
+                text_value = part.get("text")
+                if isinstance(text_value, str) and text_value.strip():
+                    parts.append(text_value)
+        return "\n".join(parts).strip() or None
 
 
 def parse_fix_response(text: str) -> dict:
