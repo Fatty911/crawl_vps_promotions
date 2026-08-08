@@ -137,6 +137,20 @@ def test_runner_stages_before_hashes_diff():
     assert add_pos < diff_pos
 
 
+def test_runner_uses_project_config_file_not_env():
+    """OPENCODE_CONFIG_CONTENT env injection returns 404 on opencode 1.18.15
+    (verified 2026-08-08); the working mechanism is a project-level
+    opencode.json written inside --dir. Both runners must use the file."""
+    for script in ("vendor_extend_runner.py", "self_repair_runner_vps.py"):
+        src = (ROOT / f"scripts/{script}").read_text(encoding="utf-8")
+        # The env var may appear in comments (explaining why it is not used),
+        # but never as an actual assignment.
+        assert 'env["OPENCODE_CONFIG_CONTENT"]' not in src
+        assert "OPENCODE_CONFIG_CONTENT = json.dumps" not in src
+        assert '"opencode.json"' in src
+        assert '"--dir", tmpdir' in src
+
+
 def test_runner_uses_global_exact_provider_model_names():
     """opencode 1.18.x config injection only overrides already-declared
     providers/models when a global config exists; on a fresh runner the

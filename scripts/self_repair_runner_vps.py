@@ -173,11 +173,17 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
         "permission": read_only,
     }
     env = dict(os.environ)
-    env["OPENCODE_CONFIG_CONTENT"] = json.dumps(config, ensure_ascii=False)
     env["OPENCODE_DISABLE_AUTOUPDATE"] = "1"
     env["OPENCODE_DISABLE_TELEMETRY"] = "1"
     opencode_bin = os.environ.get("OPENCODE_BIN", "opencode")
     with tempfile.TemporaryDirectory(prefix="vps-repair-") as tmpdir:
+        # Write the provider config as a PROJECT-level opencode.json inside
+        # --dir (verified 2026-08-08 on opencode 1.18.15: OPENCODE_CONFIG_CONTENT
+        # env injection returns 404; a project opencode.json registers the
+        # provider on a fresh runner).
+        (Path(tmpdir) / "opencode.json").write_text(
+            json.dumps(config, ensure_ascii=False), encoding="utf-8"
+        )
         # Pass the prompt as a positional message (subprocess list-args, no
         # shell quoting issues). --file is an attachment, not a message source.
         cmd = [

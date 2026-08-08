@@ -69,9 +69,10 @@ def _sh(args: list[str], cwd: Path | None = None, timeout: int = 600) -> subproc
 def call_opencode(provider: dict, prompt: str, max_tokens: int = 6000) -> str | None:
     """调用 OpenCode CLI（Agent 工具），禁止脚本直连 LLM API。
 
-    Mirrors self_repair_runner_vps.py: full provider config (baseURL/apiKey/
-    limits/read-only permission) is passed via OPENCODE_CONFIG_CONTENT env;
-    prompt is passed via --file, never a positional arg.
+    Provider config (baseURL/apiKey/limits/read-only permission) is written as
+    a project-level opencode.json inside --dir; prompt is passed as a
+    positional message. OPENCODE_CONFIG_CONTENT env injection returns 404 on
+    opencode 1.18.15 (verified 2026-08-08) — do not use it.
     """
     import tempfile
 
@@ -106,11 +107,18 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 6000) -> str | 
         "permission": read_only,
     }
     env = dict(os.environ)
-    env["OPENCODE_CONFIG_CONTENT"] = json.dumps(config, ensure_ascii=False)
     env["OPENCODE_DISABLE_AUTOUPDATE"] = "1"
     env["OPENCODE_DISABLE_TELEMETRY"] = "1"
     opencode_bin = os.environ.get("OPENCODE_BIN", "opencode")
     with tempfile.TemporaryDirectory(prefix="vendor-extend-") as tmpdir:
+        # Write the provider config as a PROJECT-level opencode.json inside
+        # --dir. Verified on opencode 1.18.15 (2026-08-08): with no global
+        # config (fresh runner) a project opencode.json registers arbitrary
+        # providers; OPENCODE_CONFIG_CONTENT env injection does NOT work
+        # (404) — never use it here.
+        (Path(tmpdir) / "opencode.json").write_text(
+            json.dumps(config, ensure_ascii=False), encoding="utf-8"
+        )
         # Pass the prompt as a positional message (subprocess list-args, no
         # shell quoting issues). --file is an attachment, not a message source.
         cmd = [
