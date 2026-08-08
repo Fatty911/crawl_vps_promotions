@@ -34,7 +34,7 @@ MAX_NEW_VENDORS = int(os.environ.get("VENDOR_MAX_NEW", "3"))
 # opencode 1.18.x only lets config injection override providers/models that are
 # already declared (whitelist + models). Verified 2026-08-08 on opencode 1.18.15:
 #   - volcengine-coding/glm-5.2          (global opencode.json) works
-#   - nvidia/nvidia-minimax-m3           (global opencode.json) works
+#   - volcengine-coding/kimi-k2.7-code   (global opencode.json) works
 #   - arbitrary new provider names       -> ProviderModelNotFoundError
 REVIEW_MODELS = [
     {
@@ -42,17 +42,20 @@ REVIEW_MODELS = [
         "env_key": "VOLCENGINE_CODING_PLAN_API_KEY",
         "base_url": "https://ark.cn-beijing.volces.com/api/coding/v3",
     },
+    # Moonshot family via Ark (NIM minimax was flaky/429 on 2026-08-08;
+    # Ark kimi-k2.7-code is fast and stable — same two-family requirement:
+    # Zhipu glm-5.2 + Moonshot kimi-k2.7-code).
     {
-        "name": "minimax", "provider": "nvidia", "model": "nvidia-minimax-m3",
-        "env_key": "NVIDIA_NIM_API_KEY",
-        "base_url": "https://integrate.api.nvidia.com/v1",
+        "name": "kimi", "provider": "volcengine-coding", "model": "kimi-k2.7-code",
+        "env_key": "VOLCENGINE_CODING_PLAN_API_KEY",
+        "base_url": "https://ark.cn-beijing.volces.com/api/coding/v3",
     },
 ]
 
 GEN_MODEL = {
-    "name": "kimi", "provider": "kimi-coding-plan", "model": "k3",
-    "env_key": "KIMI_CODINGPLAN_API_KEY",
-    "base_url": "https://api.kimi.com/coding/v1",
+    "name": "glm", "provider": "volcengine-coding", "model": "glm-5.2",
+    "env_key": "VOLCENGINE_CODING_PLAN_API_KEY",
+    "base_url": "https://ark.cn-beijing.volces.com/api/coding/v3",
 }
 
 # VPS-ish markers to check on a candidate landing page.

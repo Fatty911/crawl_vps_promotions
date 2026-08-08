@@ -158,10 +158,10 @@ def test_runner_uses_global_exact_provider_model_names():
     environments work (verified 2026-08-08 on opencode 1.18.15)."""
     src = (ROOT / "scripts/vendor_extend_runner.py").read_text(encoding="utf-8")
     assert '"provider": "volcengine-coding", "model": "glm-5.2"' in src
-    assert '"provider": "nvidia", "model": "nvidia-minimax-m3"' in src
-    assert '"provider": "kimi-coding-plan", "model": "k3"' in src
-    # No invented provider names may remain.
+    assert '"provider": "volcengine-coding", "model": "kimi-k2.7-code"' in src
+    # No invented/flaky provider names may remain (NIM was 429 on 2026-08-08).
     assert "nvidia-nim" not in src
+    assert "nvidia-minimax-m3" not in src
     assert "minimaxai/minimax-m3" not in src
     # Same rule for the repair runner (which shares the opencode injection path).
     repair = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
