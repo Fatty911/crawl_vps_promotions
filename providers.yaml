@@ -463,3 +463,33 @@ targets:
     oversell: high
     reliability_note: 用户点名避坑：口碑差、超售严重、客服难联系
     specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.3}
+  - id: "10gbps-iowa-vps"
+    <<: *target_defaults
+    priority: 300
+    expected_domains: ["10gbps.io"]
+    expected_currencies: [USD]
+    provider: "10Gbps"
+    plan_name: "AMD EPYC 9334 NVMe VPS"
+    plan_tokens: ["10gbps", "epyc", "9334", "nvme", "iowa", "utah", "amd", "10gbps-io"]
+    url: "https://10gbps.io"
+    region: "US-Iowa"
+    provider_claimed_routes: ["10Gbps dedicated"]
+    reliability: 6
+    oversell: "low"
+    reliability_note: "LowEndTalk promotion with EPYC 9334; provider focuses on high-bandwidth niche with limited but generally positive community feedback"
+    specs: {cpu: 1, ram_gb: 2, storage_gb: 20, bandwidth_gbps: 10}
+  - id: "linveo-ohio-vps"
+    <<: *target_defaults
+    priority: 300
+    expected_domains: ["linveo.com"]
+    expected_currencies: [USD]
+    provider: "Linveo"
+    plan_name: "Intel KVM VPS 4GB NVMe"
+    plan_tokens: ["linveo", "kvm", "nvme", "intel", "ohio", "texas", "arizona", "4gb"]
+    url: "https://linveo.com"
+    region: "US-Ohio"
+    provider_claimed_routes: []
+    reliability: 5
+    oversell: "medium"
+    reliability_note: "Budget Intel KVM from $2.85/mo; limited long-term community track record but active LowEndTalk presence"
+    specs: {cpu: 2, ram_gb: 4, storage_gb: 40, bandwidth_gbps: 1}
