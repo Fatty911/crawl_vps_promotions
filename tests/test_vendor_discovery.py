@@ -146,6 +146,26 @@ def test_runner_stages_before_hashes_diff():
     assert add_pos < diff_pos
 
 
+def test_repair_workflow_has_mihomo_like_monitor():
+    """vps-repair must configure the same mihomo node-rotation runtime as
+    vps-monitor; without it, verify_plan_tokens fetches from the raw runner
+    IP, gets anti-bot pages and misclassifies healthy tasks as retired
+    (observed 2026-08-09: 8 tasks wrongly confirmed external_retired)."""
+    repair = (ROOT / ".github/workflows/vps-repair.yml").read_text(encoding="utf-8")
+    monitor = (ROOT / ".github/workflows/vps-monitor.yml").read_text(encoding="utf-8")
+    assert "Configure mihomo node-rotation runtime" in repair
+    assert "setup_proxy_runtime.py" in repair
+    assert "PROXY_SUBSCRIPTIONS" in repair
+    assert "--test-url" in repair
+    # The verify channel must honour the proxy env too.
+    verify_src = (ROOT / "vps_monitor/verify.py").read_text(encoding="utf-8")
+    assert "proxies=_proxies_from_env()" in verify_src
+    assert "HTTP_PROXY" in verify_src
+    # Consistency guard: any workflow that fetches pages needs the runtime.
+    assert monitor.count("setup_proxy_runtime.py") >= 1
+    assert repair.count("setup_proxy_runtime.py") >= 1
+
+
 def test_repair_workflow_skips_retired_and_backfills_slots():
     """vps-repair workflow must not let confirmed-external_retired tasks
     consume the 3 repair slots (observed 2026-08-09: bandwagon/cloudcone

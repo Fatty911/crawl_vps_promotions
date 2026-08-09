@@ -8,9 +8,23 @@ network egress as a deliberate, audited capability.
 
 from __future__ import annotations
 
+import os
 from typing import Iterable
 
 import requests
+
+
+def _proxies_from_env() -> dict[str, str] | None:
+    """Honour the mihomo proxy env (same channel as the monitor's requests
+    path). Without it, verify would fetch from the raw runner IP and get
+    anti-bot challenge pages — misclassifying healthy tasks as retired
+    (observed 2026-08-09: BuyVM SLICE tokens were present but verify said
+    NOT confirmed)."""
+    proxy_url = os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or ""
+    if not proxy_url:
+        return None
+    https_proxy = os.getenv("HTTPS_PROXY") or os.getenv("https_proxy") or proxy_url
+    return {"http": proxy_url, "https": https_proxy}
 
 
 def verify_plan_tokens(
@@ -37,6 +51,7 @@ def verify_plan_tokens(
             timeout=timeout,
             headers={"User-Agent": user_agent},
             allow_redirects=True,
+            proxies=_proxies_from_env(),
         )
         page = response.text.casefold()
     except Exception:

@@ -83,6 +83,15 @@ jobs:
           fi
           cp "$EVIDENCE_FILE" live-evidence.json
 
+      - name: Configure mihomo node-rotation runtime
+        env:
+          PROXY_SUBSCRIPTIONS: ${{ secrets.PROXY_SUBSCRIPTIONS }}
+        run: |
+          python scripts/setup_proxy_runtime.py \
+            --test-url "https://www.cloudiplc.com/" \
+            --test-url "https://lowendbox.com/" \
+            || echo "mihomo runtime unavailable; verify will run direct"
+
       - name: Classify failures
         run: |
           python scripts/classify_vps_failure.py \

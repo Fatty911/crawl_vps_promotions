@@ -13,10 +13,11 @@ class _FakeResponse:
 def test_all_tokens_present_confirms(monkeypatch):
     import requests
 
-    def fake_get(url, timeout, headers, allow_redirects):
+    def fake_get(url, timeout, headers, allow_redirects, proxies=None):
         assert url == "https://example.com/slice"
         assert timeout == 30
         assert "Chrome" in headers["User-Agent"]
+        assert proxies is None  # no proxy env in test
         return _FakeResponse("<html>SLICE 4096 plan 4096 MB SSD</html>")
 
     monkeypatch.setattr(requests, "get", fake_get)
@@ -25,12 +26,35 @@ def test_all_tokens_present_confirms(monkeypatch):
     assert missing == []
 
 
+def test_verify_uses_mihomo_proxy_env(monkeypatch):
+    """verify must honour HTTP_PROXY (same channel as the monitor's requests
+    path). Without it, verify fetches from the raw runner IP and gets
+    anti-bot pages — misclassifying healthy tasks as retired (observed
+    2026-08-09: BuyVM SLICE tokens present but verify said NOT confirmed)."""
+    import requests
+
+    captured = {}
+
+    def fake_get(url, timeout, headers, allow_redirects, proxies=None):
+        captured["proxies"] = proxies
+        return _FakeResponse("<html>SLICE 4096 plan 4096 MB SSD</html>")
+
+    monkeypatch.setenv("HTTP_PROXY", "http://127.0.0.1:7890")
+    monkeypatch.setattr(requests, "get", fake_get)
+    ok, _ = verify_plan_tokens("https://example.com/slice", ["SLICE 4096"])
+    assert ok is True
+    assert captured["proxies"] == {
+        "http": "http://127.0.0.1:7890",
+        "https": "http://127.0.0.1:7890",
+    }
+
+
 def test_missing_token_fails(monkeypatch):
     import requests
 
     monkeypatch.setattr(
         requests, "get",
-        lambda url, timeout, headers, allow_redirects: _FakeResponse("<html>nothing here</html>"),
+        lambda url, timeout, headers, allow_redirects, proxies=None: _FakeResponse("<html>nothing here</html>"),
     )
     ok, missing = verify_plan_tokens("https://example.com/x", ["SLICE 4096"])
     assert ok is False
@@ -40,7 +64,7 @@ def test_missing_token_fails(monkeypatch):
 def test_fetch_failure_is_not_confirmed(monkeypatch):
     import requests
 
-    def boom(url, timeout, headers, allow_redirects):
+    def boom(url, timeout, headers, allow_redirects, proxies=None):
         raise RuntimeError("network down")
 
     monkeypatch.setattr(requests, "get", boom)
