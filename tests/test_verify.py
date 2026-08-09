@@ -51,6 +51,58 @@ def test_verify_matches_visible_text_not_raw_html(monkeypatch):
     assert missing == []
 
 
+def test_verify_browser_fallback_confirms_js_rendered_store(monkeypatch):
+    """A Cloudflare/JS-rendered store returns a challenge page to requests;
+    verify must fall back to a browser render before declaring retired
+    (observed 2026-08-09: BuyVM behind CF was wrongly marked external_retired
+    even after the proxy fix, because requests cannot execute JS)."""
+    import requests
+
+    class R:
+        text = "<html><title>Just a moment...</title><body>Checking your browser before accessing.</body></html>"
+
+    def fake_get(url, timeout, headers, allow_redirects, proxies=None):
+        return R()
+
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    from vps_monitor import verify as verify_mod
+
+    real_browser_render = verify_mod._browser_render
+    monkeypatch.setattr(
+        verify_mod, "_browser_render",
+        # Real _browser_render returns _visible_text() (already casefolded).
+        lambda url, timeout=30000: "slice 4096 4096 mb memory 80 gb ssd storage",
+    )
+    ok, missing = verify_mod.verify_plan_tokens(
+        "https://buyvm.net/kvm-dedicated-server-slices",
+        ["SLICE 4096", "4096 MB", "80 GB SSD"],
+    )
+    assert ok is True
+    assert missing == []
+    monkeypatch.setattr(verify_mod, "_browser_render", real_browser_render)
+
+
+def test_verify_browser_fallback_reports_unconfirmed_when_both_fail(monkeypatch):
+    """If requests gets a challenge page AND the browser render fails, the
+    result must be NOT confirmed (safe: never repair on unconfirmed data)."""
+    import requests
+
+    class R:
+        text = "<html><title>Just a moment...</title></html>"
+
+    monkeypatch.setattr(
+        requests, "get",
+        lambda url, timeout, headers, allow_redirects, proxies=None: R(),
+    )
+    from vps_monitor import verify as verify_mod
+
+    monkeypatch.setattr(verify_mod, "_browser_render", lambda url, timeout=30000: None)
+    ok, missing = verify_mod.verify_plan_tokens("https://example.com/x", ["TOKEN-A"])
+    assert ok is False
+    assert missing == ["TOKEN-A"]
+
+
 def test_verify_uses_mihomo_proxy_env(monkeypatch):
     """verify must honour HTTP_PROXY (same channel as the monitor's requests
     path). Without it, verify fetches from the raw runner IP and gets
