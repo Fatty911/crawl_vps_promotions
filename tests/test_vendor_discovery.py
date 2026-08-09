@@ -146,6 +146,16 @@ def test_runner_stages_before_hashes_diff():
     assert add_pos < diff_pos
 
 
+def test_repair_workflow_installs_playwright_browser():
+    """vps-repair must install the Playwright chromium binary like vps-monitor;
+    verify's browser-render fallback cannot start without it (observed
+    2026-08-09: verify kept reporting NOT confirmed because chromium was
+    missing on the runner)."""
+    repair = (ROOT / ".github/workflows/vps-repair.yml").read_text(encoding="utf-8")
+    assert "playwright install --with-deps chromium" in repair
+    assert repair.count("playwright install --with-deps chromium") == 1
+
+
 def test_repair_workflow_has_mihomo_like_monitor():
     """vps-repair must configure the same mihomo node-rotation runtime as
     vps-monitor; without it, verify_plan_tokens fetches from the raw runner
