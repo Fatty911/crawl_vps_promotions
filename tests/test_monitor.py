@@ -515,6 +515,7 @@ def test_live_evidence_is_bounded_and_redacts_url_and_reason_secrets():
         "block_reason",
         "attempts",
         "latency_ms",
+        "browser_diag",
     }
     assert row["final_url"] == "https://example.com"
     assert row["method"] == "other"

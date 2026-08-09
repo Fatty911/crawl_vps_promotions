@@ -249,6 +249,22 @@ def test_browser_fetch_uses_proxy_and_rotation(monkeypatch):
             pass
 
     class FakePage:
+        def __init__(self):
+            self.handlers = {}
+
+        def on(self, event, handler):
+            self.handlers[event] = handler
+
+        def title(self):
+            return "HostDare"
+
+        def evaluate(self, expr):
+            if "readyState" in expr:
+                return "complete"
+            if "iframe" in expr:
+                return 0
+            return None
+
         def goto(self, url, **kw):
             return type("R", (), {"status": 200})()
 

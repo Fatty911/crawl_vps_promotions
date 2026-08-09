@@ -59,6 +59,7 @@ LIVE_EVIDENCE_FIELDS = frozenset(
         "block_reason",
         "attempts",
         "latency_ms",
+        "browser_diag",
     }
 )
 LIVE_EVIDENCE_METHODS = ("requests", "browser", "circuit", "other")
@@ -138,6 +139,7 @@ class HTTPFetch:
     block_reason: str | None
     attempts: int
     latency_ms: int
+    browser_diag: str | None = None
 
 
 @dataclass(frozen=True)
@@ -152,6 +154,7 @@ class TargetResult:
     attempts: int
     latency_ms: int
     checked_at: str
+    browser_diag: str | None = None
 
 
 class RequestLimiter:
@@ -421,6 +424,7 @@ def fetch_target(
             "browser", "url_domain_mismatch",
             requested.attempts + rendered.attempts,
             requested.latency_ms + rendered.latency_ms, checked_at,
+            browser_diag=rendered.browser_diag,
         )
     rendered_parse = parse_offer(rendered.markup, target)
     if rendered.outcome == "success" and rendered_parse.outcome == "success":
@@ -429,6 +433,7 @@ def fetch_target(
             rendered.final_url, "browser", None,
             requested.attempts + rendered.attempts,
             requested.latency_ms + rendered.latency_ms, checked_at,
+            browser_diag=rendered.browser_diag,
         )
     if rendered_parse.outcome in {"rejected", "out_of_stock"}:
         outcome = rendered_parse.outcome
@@ -439,6 +444,7 @@ def fetch_target(
         "browser", rendered.block_reason or rendered_parse.block_reason or "no_exact_same_card_offer",
         requested.attempts + rendered.attempts,
         requested.latency_ms + rendered.latency_ms, checked_at,
+        browser_diag=rendered.browser_diag,
     )
 
 
@@ -567,6 +573,18 @@ def _safe_evidence_reason(value: str | None) -> str | None:
     return "unclassified"
 
 
+def _safe_evidence_diag(value: str | None) -> str | None:
+    """Sanitize browser diagnostics for evidence: keep detail but bound
+    length and strip control characters (the reason normalizer would collapse
+    it to 'unclassified' and lose the signal)."""
+    if value is None:
+        return None
+    candidate = re.sub(r"[\x00-\x1f\x7f]", " ", str(value)).strip()
+    if not candidate:
+        return None
+    return candidate[:120]
+
+
 def _safe_evidence_method(value: str | None) -> str:
     candidate = str(value or "").strip().lower()
     return candidate if candidate in LIVE_EVIDENCE_METHODS else "other"
@@ -624,6 +642,7 @@ def build_live_evidence(
             "block_reason": _safe_evidence_reason(result.block_reason),
             "attempts": _safe_evidence_int(result.attempts),
             "latency_ms": _safe_evidence_int(result.latency_ms),
+            "browser_diag": _safe_evidence_diag(result.browser_diag),
         }
         for result in results
     ]
@@ -641,6 +660,7 @@ def _evidence_from_public(public: dict[str, Any]) -> dict[str, Any]:
             "method": _safe_evidence_method(status.get("method")),
             "outcome": _safe_evidence_outcome(status.get("outcome")),
             "block_reason": _safe_evidence_reason(status.get("block_reason")),
+            "browser_diag": _safe_evidence_diag(status.get("browser_diag")),
             "attempts": _safe_evidence_int(status.get("attempts")),
             "latency_ms": _safe_evidence_int(status.get("latency_ms")),
         }
@@ -784,6 +804,7 @@ def build_public_data(
             "offer_id": offer.offer_id if offer else None,
             "block_reason": result.block_reason,
             "rejection_reason": result.block_reason,
+            "browser_diag": result.browser_diag,
             "checked_at": result.checked_at,
             "started_at": result.checked_at,
             "finished_at": result.checked_at,
@@ -1476,6 +1497,21 @@ def browser_fetch(url: str) -> HTTPFetch:
             browser = playwright.chromium.launch(headless=True, **launch_kwargs)
             try:
                 page = browser.new_page(locale="zh-CN")
+                # Browser diagnostics: console messages, JS page errors,
+                # failed network requests, and DOM state. No vision calls —
+                # the agent model may lack image support; these signals are
+                # the closest deterministic view of what a human sees.
+                console_msgs: list[str] = []
+                page_errors: list[str] = []
+                failed_requests: list[str] = []
+                page.on("console", lambda msg: console_msgs.append(msg.text[:120]))
+                page.on("pageerror", lambda err: page_errors.append(str(err)[:160]))
+                page.on(
+                    "requestfailed",
+                    lambda req: failed_requests.append(
+                        f"{req.method} {req.url[:100]} {req.failure}"
+                    ),
+                )
                 response = page.goto(
                     url,
                     wait_until="domcontentloaded",
@@ -1483,6 +1519,8 @@ def browser_fetch(url: str) -> HTTPFetch:
                 )
                 markup = page.content()
                 final_url = page.url
+                # DOM state snapshot (deterministic, mirrors visible page).
+                dom_state = _dom_state_snapshot(page, markup)
                 visible = BeautifulSoup(markup, "html.parser").get_text(" ", strip=True)
                 block_reason = next(
                     (
@@ -1491,6 +1529,13 @@ def browser_fetch(url: str) -> HTTPFetch:
                         if word.casefold() in visible.casefold()
                     ),
                     None,
+                )
+                diag = _browser_diag(
+                    console_msgs=console_msgs,
+                    page_errors=page_errors,
+                    failed_requests=failed_requests,
+                    dom_state=dom_state,
+                    visible_len=len(visible),
                 )
                 if rotator:
                     if block_reason:
@@ -1506,6 +1551,7 @@ def browser_fetch(url: str) -> HTTPFetch:
                     block_reason,
                     1,
                     int((time.monotonic() - started) * 1000),
+                    browser_diag=diag,
                 )
             finally:
                 browser.close()
@@ -1516,7 +1562,58 @@ def browser_fetch(url: str) -> HTTPFetch:
             "", "error", None, url, "browser",
             f"browser:{type(exc).__name__}", 1,
             int((time.monotonic() - started) * 1000),
+            browser_diag=f"exception:{type(exc).__name__}:{str(exc)[:120]}",
         )
+
+
+def _dom_state_snapshot(page: Any, markup: str) -> dict[str, Any]:
+    """Capture a deterministic snapshot of the rendered DOM state."""
+    snapshot: dict[str, Any] = {}
+    try:
+        snapshot["title"] = page.title()[:80] or ""
+        snapshot["ready_state"] = page.evaluate("document.readyState")
+        snapshot["body_len"] = len(markup)
+        snapshot["iframes"] = page.evaluate("document.querySelectorAll('iframe').length")
+        # A JS shell has little visible text even when the DOM is large.
+        visible = BeautifulSoup(markup, "html.parser").get_text(" ", strip=True)
+        snapshot["visible_len"] = len(visible)
+        snapshot["has_price"] = bool(re.search(r"\$\s*[0-9]+(?:\.[0-9]{1,2})?", visible))
+    except Exception as exc:
+        snapshot["error"] = f"{type(exc).__name__}:{str(exc)[:80]}"
+    return snapshot
+
+
+def _browser_diag(
+    *,
+    console_msgs: list[str],
+    page_errors: list[str],
+    failed_requests: list[str],
+    dom_state: dict[str, Any],
+    visible_len: int,
+) -> str:
+    """Compact single-line browser diagnostic for evidence/UI display."""
+    parts: list[str] = []
+    js_errors = len(page_errors)
+    if js_errors:
+        parts.append(f"js:{js_errors}")
+    if console_msgs:
+        parts.append(f"console:{len(console_msgs)}")
+    if failed_requests:
+        parts.append(f"netfail:{len(failed_requests)}")
+    ready = dom_state.get("ready_state", "")
+    if ready and ready != "complete":
+        parts.append(f"ready:{ready}")
+    title = str(dom_state.get("title", "") or "")
+    if title:
+        parts.append(f"title:{title[:30]}")
+    if visible_len < 200:
+        parts.append(f"text:{visible_len}")
+    state = dom_state.get("error")
+    if state:
+        parts.append(f"dom:{state}")
+    if not parts:
+        parts.append(f"text:{visible_len}")
+    return " | ".join(parts)
 
 
 def _offline_results(targets: list[PlanTarget]) -> list[TargetResult]:

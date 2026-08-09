@@ -126,9 +126,19 @@ function render() {
     }
     const raw = row.amount === null ? null : `${row.amount} ${row.currency} / ${row.billing_period}`;
     const monthly = row.monthly_amount === null ? null : `${row.monthly_amount} ${row.currency}`;
+    const reason = row.rejection_reason || row.block_reason || "";
+    const diag = row.browser_diag || "";
+    const reasonEl = document.createElement("td");
+    reasonEl.textContent = reason || diag || "—";
+    if (diag && reason) {
+      reasonEl.textContent = `${reason} · ${diag}`;
+      reasonEl.title = `浏览器诊断：${diag}`;
+    } else if (diag) {
+      reasonEl.title = `浏览器诊断：${diag}`;
+    }
     tr.append(cell(row.provider), plan, cell(row.region), cell(row.outcome), cell(raw),
       cell(monthly), cell(stars(row.value_score)), cell(stars(row.reliability)),
-      cell(oversellLabel(row.oversell)), cell(row.availability), cell(row.rejection_reason || row.block_reason));
+      cell(oversellLabel(row.oversell)), cell(row.availability), reasonEl);
     bodyNode.append(tr);
 
     const card = document.createElement("article");

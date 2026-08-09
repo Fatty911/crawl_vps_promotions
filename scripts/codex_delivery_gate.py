@@ -13,6 +13,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AUTHORIZED_PATHS = {
+    ".gitignore",
     ".github/workflows/vps-monitor.yml",
     ".github/workflows/ci.yml",
     ".githooks/post-commit",
@@ -59,6 +60,7 @@ AUTHORIZED_PATHS = {
     "tests/test_node_rotator.py",
     "tests/test_proxy_runtime.py",
     "tests/test_vendor_discovery.py",
+    "tests/test_browser_diag.py",
     "docs/operations.md",
     "docs/schema.md",
     "docs/scoring_rationale.md",
