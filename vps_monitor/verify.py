@@ -12,6 +12,7 @@ import os
 from typing import Iterable
 
 import requests
+from bs4 import BeautifulSoup
 
 
 def _proxies_from_env() -> dict[str, str] | None:
@@ -53,7 +54,13 @@ def verify_plan_tokens(
             allow_redirects=True,
             proxies=_proxies_from_env(),
         )
-        page = response.text.casefold()
+        # Match against the rendered visible text, not the raw HTML: store
+        # pages split tokens across tags (e.g. "SLICE <span>4096</span>"),
+        # so raw-HTML substring checks falsely report retired (observed
+        # 2026-08-09: BuyVM SLICE 4096 was in the DOM but verify said
+        # NOT confirmed).
+        soup = BeautifulSoup(response.text, "html.parser")
+        page = soup.get_text(" ", strip=True).casefold()
     except Exception:
         return False, list(tokens)
     missing = [t for t in tokens if t.casefold() not in page]

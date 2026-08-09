@@ -26,6 +26,31 @@ def test_all_tokens_present_confirms(monkeypatch):
     assert missing == []
 
 
+def test_verify_matches_visible_text_not_raw_html(monkeypatch):
+    """Store pages split tokens across tags (e.g. 'SLICE <span>4096</span>').
+    verify must match against rendered visible text, not raw HTML — raw
+    substring checks falsely report retired (observed 2026-08-09 on BuyVM)."""
+    import requests
+
+    raw_html = (
+        "<html><body>"
+        "<h2>SLICE <span>4096</span></h2>"
+        "<li><strong>4096 MB</strong> Memory</li>"
+        "<li><strong>80 GB SSD</strong> Storage</li>"
+        "</body></html>"
+    )
+
+    def fake_get(url, timeout, headers, allow_redirects, proxies=None):
+        class R:
+            text = raw_html
+        return R()
+
+    monkeypatch.setattr(requests, "get", fake_get)
+    ok, missing = verify_plan_tokens("https://example.com/slice", ["SLICE 4096", "4096 MB", "80 GB SSD"])
+    assert ok is True
+    assert missing == []
+
+
 def test_verify_uses_mihomo_proxy_env(monkeypatch):
     """verify must honour HTTP_PROXY (same channel as the monitor's requests
     path). Without it, verify fetches from the raw runner IP and gets
