@@ -60,25 +60,73 @@ def _looks_like_challenge(markup: str) -> bool:
 def _browser_render(target_url: str, *, timeout: int = 30000) -> str | None:
     """Render the page with a headless browser (same capability as the
     monitor's browser_fetch) so JS-rendered / Cloudflare-protected stores can
-    be verified. Returns visible text, or None on any failure."""
+    be verified. Returns visible text, or None on any failure.
+
+    Retries with a fresh airport node each attempt (like the monitor's
+    per-request rotation): a single node is often Cloudflare-blocked while
+    another works (observed 2026-08-09: BuyVM SLICE failed via the mihomo
+    node but rendered fine locally / via other nodes)."""
     if _sync_playwright is None:
         return None
     proxy_url = os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or ""
+    rotator = _get_rotator()
     launch_kwargs: dict[str, object] = {}
     if proxy_url and "127.0.0.1" in proxy_url:
         launch_kwargs["proxy"] = {"server": proxy_url}
+    last_text: str | None = None
+    for _attempt in range(3):
+        if rotator:
+            rotator.rotate()
+        try:
+            with _sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True, **launch_kwargs)
+                try:
+                    page = browser.new_page(locale="zh-CN")
+                    page.goto(target_url, wait_until="domcontentloaded", timeout=timeout)
+                    markup = page.content()
+                    last_text = _visible_text(markup)
+                    if not _looks_like_challenge(markup):
+                        return last_text
+                finally:
+                    browser.close()
+        except Exception:
+            last_text = None
+    # All attempts hit challenge pages; return the last text so the caller
+    # can decide (tokens absent -> NOT confirmed, safe).
+    return last_text
+
+
+def _get_rotator():
+    """Lazily build the node rotator (same as monitor's), disabled when no
+    local mihomo proxy is configured."""
+    global _rotator
+    if _rotator is not None:
+        return _rotator
+    proxy_url = os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or ""
+    if not proxy_url or "127.0.0.1" not in proxy_url:
+        _rotator = False
+        return _rotator
     try:
-        with _sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True, **launch_kwargs)
-            try:
-                page = browser.new_page(locale="zh-CN")
-                page.goto(target_url, wait_until="domcontentloaded", timeout=timeout)
-                markup = page.content()
-                return _visible_text(markup)
-            finally:
-                browser.close()
+        from pathlib import Path
+        import sys as _sys
+
+        root = Path(__file__).resolve().parents[1]
+        _sys.path.insert(0, str(root / "scripts"))
+        from node_rotator import NodeRotator
+
+        rotator = NodeRotator(
+            controller=os.getenv("MIHOMO_CONTROLLER", "http://127.0.0.1:9090"),
+            group=os.getenv("MIHOMO_PROXY_GROUP", "PROXY"),
+            blacklist_path=root / "state" / "proxy_blacklist.json",
+        )
+        rotator.discover_nodes()
+        _rotator = rotator if rotator.enabled else False
     except Exception:
-        return None
+        _rotator = False
+    return _rotator
+
+
+_rotator: object = None
 
 
 def verify_plan_tokens(

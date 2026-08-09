@@ -1,5 +1,7 @@
 """Tests for vps_monitor.verify (plan-token re-fetch gate)."""
 
+import pathlib
+
 import pytest
 
 from vps_monitor.verify import verify_plan_tokens
@@ -81,6 +83,94 @@ def test_verify_browser_fallback_confirms_js_rendered_store(monkeypatch):
     assert ok is True
     assert missing == []
     monkeypatch.setattr(verify_mod, "_browser_render", real_browser_render)
+
+
+def test_verify_browser_retries_with_fresh_node(monkeypatch):
+    """The real _browser_render loops up to 3 attempts, rotating nodes; a
+    challenge page on attempt 1 must be retried on a fresh node and succeed
+    on attempt 2 (observed 2026-08-09: BuyVM SLICE failed via the first
+    mihomo node)."""
+    import requests
+
+    from vps_monitor import verify as verify_mod
+
+    class R:
+        text = "<html><title>Just a moment...</title><body>Checking your browser before accessing.</body></html>"
+
+    monkeypatch.setattr(
+        requests, "get",
+        lambda url, timeout, headers, allow_redirects, proxies=None: R(),
+    )
+
+    renders = {"count": 0}
+    rotates = {"count": 0}
+
+    class FakePage:
+        def goto(self, url, **kw):
+            pass
+
+        def content(self):
+            renders["count"] += 1
+            if renders["count"] == 1:
+                return "<html><title>Just a moment...</title></html>"
+            return "<html><h2>SLICE 4096</h2><p>4096 MB Memory 80 GB SSD Storage</p></html>"
+
+    class FakeBrowser:
+        def new_page(self, **kw):
+            return FakePage()
+
+        def close(self):
+            pass
+
+    class FakePlaywright:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        @property
+        def chromium(self):
+            return self
+
+        def launch(self, headless=True, **kw):
+            return FakeBrowser()
+
+    class FakeRotator:
+        def __init__(self, *a, **k):
+            pass
+
+        def discover_nodes(self):
+            self._enabled = True
+
+        @property
+        def enabled(self):
+            return True
+
+        def rotate(self):
+            rotates["count"] += 1
+
+    monkeypatch.setattr(verify_mod, "_sync_playwright", FakePlaywright)
+    monkeypatch.setattr(verify_mod, "_get_rotator", lambda: FakeRotator())
+
+    ok, missing = verify_mod.verify_plan_tokens(
+        "https://buyvm.net/kvm-dedicated-server-slices",
+        ["SLICE 4096", "4096 MB", "80 GB SSD"],
+    )
+    assert ok is True
+    assert missing == []
+    assert renders["count"] == 2  # challenge first, then success
+    assert rotates["count"] >= 1  # a fresh node was picked between retries
+
+
+def test_verify_browser_rotation_logic_present(monkeypatch):
+    """The real _browser_render must rotate nodes between retries."""
+    from vps_monitor import verify as verify_mod
+
+    src = pathlib.Path(verify_mod.__file__).read_text(encoding="utf-8")
+    assert "rotator.rotate()" in src
+    assert "for _attempt in range(3)" in src
+    assert "_looks_like_challenge" in src
 
 
 def test_verify_browser_fallback_reports_unconfirmed_when_both_fail(monkeypatch):
