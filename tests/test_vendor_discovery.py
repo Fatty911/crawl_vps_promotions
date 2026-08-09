@@ -137,6 +137,20 @@ def test_runner_stages_before_hashes_diff():
     assert add_pos < diff_pos
 
 
+def test_self_repair_runner_imports_vps_monitor():
+    """self_repair_runner_vps.py must add ROOT to sys.path before importing
+    vps_monitor.verify (workflow runs it as `python scripts/...` from the repo
+    root; without the path fix the import fails and all repairs are skipped —
+    observed 2026-08-09 on run 31289510463)."""
+    src = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
+    assert "sys.path.insert(0, str(ROOT))" in src
+    # The path insert must come before the vps_monitor import site.
+    insert_pos = src.find("sys.path.insert(0, str(ROOT))")
+    import_pos = src.find("from vps_monitor.verify import")
+    assert insert_pos != -1 and import_pos != -1
+    assert insert_pos < import_pos
+
+
 def test_runner_pushes_after_commit():
     """The runner must push to main after commit (a local-only commit leaves
     the repo stale; verified 2026-08-08 when the first auto-extend run
