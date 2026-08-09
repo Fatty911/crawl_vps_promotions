@@ -43,6 +43,15 @@ def test_brand_from_slug():
     assert _brand_from_slug("") == ""
 
 
+def test_brand_from_slug_rejects_bandwidth_descriptors():
+    """Bandwidth descriptors like 10gbps are not brands (the auto-extend chain
+    once misnamed a provider '10Gbps' from a deal slug; verified 2026-08-09
+    that 10gbps.io redirects to datapacket.com — a dedicated-server vendor)."""
+    assert _brand_from_slug("https://lowendtalk.com/discussion/212014/black-friday-exclusive-amd-epyc-7713-9334-nvme-vps-from-4-month-iowa-utah-10gbps") == ""
+    assert _brand_from_slug("https://lowendtalk.com/discussion/219682/from-2-25-mo-10-gbps-kvm-vps-lo") == ""
+    assert _brand_from_slug("https://lowendtalk.com/discussion/219899/krypt-ion-changed-my-legacy-vps") == "krypt"
+
+
 def test_extract_vendor_candidates_finds_real_vendors():
     candidates = extract_vendor_candidates(SAMPLE_DEALS)
     vendors = {c["vendor"].casefold() for c in candidates}

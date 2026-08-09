@@ -372,6 +372,9 @@ def _brand_from_slug(link: str) -> str:
     for token in parts:
         if token.isdigit():
             continue
+        # Bandwidth descriptors (10gbps/25gbps/1gbps...) are not brands.
+        if re.fullmatch(r"\d+\s*(?:gbps|mbps|gbit|mbit)", token, re.I):
+            continue
         if len(token) >= 4 and token.casefold() not in STOPWORDS:
             return token
     return ""
