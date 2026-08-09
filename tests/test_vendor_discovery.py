@@ -137,6 +137,23 @@ def test_runner_stages_before_hashes_diff():
     assert add_pos < diff_pos
 
 
+def test_repair_workflow_skips_retired_and_backfills_slots():
+    """vps-repair workflow must not let confirmed-external_retired tasks
+    consume the 3 repair slots (observed 2026-08-09: bandwagon/cloudcone
+    retired tasks blocked buyvm/linveo every run)."""
+    wf = (ROOT / ".github/workflows/vps-repair.yml").read_text(encoding="utf-8")
+    assert "repaired_count >= 3" in wf
+    assert "external_retired" in wf
+    assert "no slot consumed" in wf
+    assert "retired_ids" in wf
+    # Slot accounting: success consumes a slot, retired does not, failure does.
+    assert "repaired_count += 1" in wf
+    assert "retired_ids.add(task" in wf
+    # The bounded loop iterates the whole candidate list, not tasks[:3].
+    assert "for task in tasks:" in wf
+    assert "tasks[:3]" not in wf
+
+
 def test_self_repair_runner_imports_vps_monitor():
     """self_repair_runner_vps.py must add ROOT to sys.path before importing
     vps_monitor.verify (workflow runs it as `python scripts/...` from the repo
