@@ -798,3 +798,19 @@ def test_parse_offer_contabo_ct_productbox_get_started():
     assert result.offer.amount == 4.4 and result.offer.currency == "EUR"
     assert result.offer.billing_period == "monthly"
     assert result.offer.availability == "in_stock"
+
+
+def test_parse_offer_linveo_panel_configure_button():
+    """Linveo moved Intel KVM pricing to /intel with panel cards and a
+    'Configure | OH' CTA linking to billing.linveo.com (4GB tier
+    discontinued; live tier is 8GB $5.50/mo). 'configure' keyword needed
+    for order-control detection (observed 2026-08-10)."""
+    markup = fixture("linveo_intel.html")
+    target = next(t for t in load_targets(load_config()) if t.id == "linveo-ohio-vps")
+    result = parse_offer(markup, target)
+    assert result.outcome == "success", result.block_reason
+    assert result.offer is not None
+    assert result.offer.amount == 5.5 and result.offer.currency == "USD"
+    assert result.offer.billing_period == "monthly"
+    assert result.offer.availability == "in_stock"
+    assert "billing.linveo.com" in (result.offer.product_url or "")

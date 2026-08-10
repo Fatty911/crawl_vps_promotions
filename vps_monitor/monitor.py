@@ -1256,7 +1256,7 @@ def _has_enabled_order_control(card: Any) -> bool:
         label = f"{control.get_text(' ', strip=True)} {control.get('value', '')}".casefold()
         if (
             not control.has_attr("disabled")
-            and any(word in label for word in ("order", "buy", "订购", "购买", "purchase", "deploy", "started"))
+            and any(word in label for word in ("order", "buy", "订购", "购买", "purchase", "deploy", "started", "configure"))
         ):
             return True
     return False
@@ -1265,7 +1265,7 @@ def _has_enabled_order_control(card: Any) -> bool:
 def _specific_order_url(card: Any, target: PlanTarget) -> str | None:
     for anchor in card.select("a[href]"):
         label = anchor.get_text(" ", strip=True).casefold()
-        if not any(word in label for word in ("order", "buy", "订购", "购买", "checkout", "purchase", "deploy", "started")):
+        if not any(word in label for word in ("order", "buy", "订购", "购买", "checkout", "purchase", "deploy", "started", "configure")):
             continue
         candidate = urljoin(target.url, str(anchor.get("href", "")))
         if target_url_allowed(target, candidate) and _offer_id(target, candidate):

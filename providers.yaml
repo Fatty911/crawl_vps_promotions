@@ -466,15 +466,15 @@ targets:
   - id: "linveo-ohio-vps"
     <<: *target_defaults
     priority: 300
-    expected_domains: ["linveo.com"]
+    expected_domains: ["linveo.com", "billing.linveo.com"]
     expected_currencies: [USD]
     provider: "Linveo"
-    plan_name: "Intel KVM VPS 4GB NVMe"
-    plan_tokens: ["linveo", "kvm", "nvme", "intel", "ohio", "texas", "arizona", "4gb"]
-    url: "https://linveo.com"
+    plan_name: "Intel KVM VPS 8GB"
+    plan_tokens: ["Intel KVM VPS 8GB"]
+    url: "https://linveo.com/intel"
     region: "US-Ohio"
     provider_claimed_routes: []
     reliability: 5
     oversell: "medium"
-    reliability_note: "Budget Intel KVM from $2.85/mo; limited long-term community track record but active LowEndTalk presence"
-    specs: {cpu: 2, ram_gb: 4, storage_gb: 40, bandwidth_gbps: 1}
+    reliability_note: "Budget Intel KVM 8GB from $5.50/mo (4GB tier discontinued); Configure | OH order link on billing.linveo.com"
+    specs: {cpu: 4, ram_gb: 8, storage_gb: 50, bandwidth_gbps: 4}
