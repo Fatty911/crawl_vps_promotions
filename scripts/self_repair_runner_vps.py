@@ -253,7 +253,8 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
         if not parts:
             print(
                 f"[vps-repair] opencode exit 0 but no text parts; "
-                f"event types: {event_types}; stdout bytes: {len(completed.stdout or '')}",
+                f"event types: {event_types}; stdout bytes: {len(completed.stdout or '')}; "
+                f"full stdout: {(completed.stdout or '')[:2000]!r}",
                 file=sys.stderr,
             )
         return "\n".join(parts).strip() or None
