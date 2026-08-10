@@ -1,7 +1,12 @@
 import json
 from pathlib import Path
 
-from scripts.classify_vps_failure import build_report, classify_task, load_plan_tokens
+from scripts.classify_vps_failure import (
+    build_report,
+    classify_task,
+    load_plan_tokens,
+    load_target_urls,
+)
 
 ROOT = Path(__file__).parents[1]
 
@@ -191,3 +196,17 @@ def test_breakage_suggestion_and_structured_tokens():
     # C5: plan tokens must travel as a structured field, not inside prose.
     assert "SLICE 4096" in buyvm["plan_tokens"]
     assert "P0b" in buyvm["suggestion"] or "修复" in buyvm["suggestion"]
+
+
+def test_target_url_uses_configured_url_not_evidence_final_url():
+    """classify must pass the configured providers.yaml url to repair (the
+    evidence final_url is often a bare domain root after redirect/challenge;
+    verify against it always fails — observed 2026-08-09 on BuyVM)."""
+    tokens = load_plan_tokens(ROOT / "providers.yaml")
+    urls = load_target_urls(ROOT / "providers.yaml")
+    report = build_report(REALISTIC_EVIDENCE, tokens, urls)
+    buyvm = next(t for t in report["tasks"] if t["task_id"] == "buyvm-slice4096")
+    assert "kvm-dedicated-server-slices" in buyvm["target_url"]
+    assert buyvm["target_url"] != "https://buyvm.net"
+    # The configured url must be a full product page, never the bare root.
+    assert buyvm["target_url"].startswith("https://buyvm.net/kvm")

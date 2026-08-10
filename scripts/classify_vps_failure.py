@@ -89,6 +89,7 @@ def classify_task(task: dict[str, Any]) -> str:
 
 
 def load_plan_tokens(config_path: Path) -> dict[str, list[str]]:
+    """plan_tokens per task id (from providers.yaml, the source of truth)."""
     config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
     return {
         str(row["id"]): [str(token) for token in row.get("plan_tokens", [])]
@@ -97,9 +98,26 @@ def load_plan_tokens(config_path: Path) -> dict[str, list[str]]:
     }
 
 
+def load_target_urls(config_path: Path) -> dict[str, str]:
+    """Configured target url per task id.
+
+    The evidence final_url is the page the monitor ended up on (often a
+    challenge page or bare domain root after a redirect), NOT the product
+    page; verify must re-check the configured url (observed 2026-08-09:
+    BuyVM final_url=https://buyvm.net but the product page is
+    /kvm-dedicated-server-slices — verify against the root always failed)."""
+    config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    return {
+        str(row["id"]): str(row.get("url") or "")
+        for row in config.get("targets", [])
+        if isinstance(row, dict) and row.get("id") and row.get("url")
+    }
+
+
 def build_report(
     evidence: dict[str, Any],
     plan_tokens: dict[str, list[str]],
+    target_urls: dict[str, str] | None = None,
 ) -> dict[str, Any]:
     tasks: list[dict[str, Any]] = []
     counts: dict[str, int] = {
@@ -134,7 +152,7 @@ def build_report(
                 "provider": str(row.get("provider") or ""),
                 "classification": classification,
                 "plan_tokens": list(plan_tokens.get(task_id, [])),
-                "target_url": str(row.get("final_url") or ""),
+                "target_url": str((target_urls or {}).get(task_id) or row.get("final_url") or ""),
                 "evidence": {
                     "outcome": str(row.get("outcome") or ""),
                     "http_status": row.get("http_status"),
@@ -179,7 +197,8 @@ def main() -> int:
         print(json.dumps({"error": f"cannot read config: {exc}"}, ensure_ascii=False))
         return 1
 
-    report = build_report(evidence, plan_tokens)
+    target_urls = load_target_urls(args.config)
+    report = build_report(evidence, plan_tokens, target_urls)
     payload = json.dumps(report, ensure_ascii=False, indent=2)
     if args.out:
         args.out.write_text(payload + "\n", encoding="utf-8")
