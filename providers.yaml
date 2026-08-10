@@ -357,12 +357,12 @@ targets:
   - id: hosthatch-la-nvme
     <<: *target_defaults
     priority: 170
-    expected_domains: [cloud.hosthatch.com]
+    expected_domains: [hosthatch.com, cloud.hosthatch.com]
     expected_currencies: [USD]
     provider: HostHatch
     plan_name: Los Angeles NVMe
     plan_tokens: [Los Angeles, NVMe]
-    url: https://cloud.hosthatch.com/order/
+    url: https://hosthatch.com/ssd-vps
     region: US
     provider_claimed_routes: [BGP]
     reliability: 6
