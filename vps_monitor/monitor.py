@@ -1522,8 +1522,16 @@ def browser_fetch(url: str) -> HTTPFetch:
                     )
                     response = page.goto(
                         url,
-                        wait_until="domcontentloaded",
-                        timeout=20_000,
+                        # networkidle (not domcontentloaded): Cloudflare
+                        # challenges ("Just a moment...") fire-and-complete
+                        # via JS after domcontentloaded; grabbing the DOM that
+                        # early yields the challenge shell and the browser
+                        # path lands on the site root. networkidle waits for
+                        # the challenge to pass and the real product DOM to
+                        # settle (verified 2026-08-10: all browser results
+                        # were landing on roots because of this).
+                        wait_until="networkidle",
+                        timeout=30_000,
                     )
                     markup = page.content()
                     final_url = page.url

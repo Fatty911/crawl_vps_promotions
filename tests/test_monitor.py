@@ -721,6 +721,11 @@ def test_browser_fetch_retries_on_challenge_then_returns_blocked():
             pass
 
         def goto(self, *_args, **_kwargs):
+            # networkidle + 30s: Cloudflare challenges complete via JS after
+            # domcontentloaded; waiting for idle lets the challenge pass and
+            # the real product DOM load (2026-08-10 browser-root regression).
+            assert _kwargs.get("wait_until") == "networkidle"
+            assert _kwargs.get("timeout") == 30_000
             return None
 
     class FakeBrowser:

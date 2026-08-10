@@ -362,7 +362,7 @@ targets:
     provider: HostHatch
     plan_name: Los Angeles NVMe
     plan_tokens: [Los Angeles, NVMe]
-    url: https://cloud.hosthatch.com/
+    url: https://cloud.hosthatch.com/order/
     region: US
     provider_claimed_routes: [BGP]
     reliability: 6
