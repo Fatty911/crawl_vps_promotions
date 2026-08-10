@@ -146,6 +146,28 @@ def test_runner_stages_before_hashes_diff():
     assert add_pos < diff_pos
 
 
+def test_repair_fix_prompt_embeds_monitor_source():
+    """The fix agent runs deny-tools; without the monitor.py source in the
+    prompt it can only hallucinate line numbers (observed 2026-08-10 run
+    31360180962: glm-5.2 honestly refused with confidence=0.0)."""
+    import sys as _sys
+
+    _sys.path.insert(0, str(ROOT / "scripts"))
+    from self_repair_runner_vps import _monitor_source_excerpt, build_fix_prompt
+
+    src = _monitor_source_excerpt()
+    assert "def parse_offer" in src or "def fetch_target" in src
+    prompt = build_fix_prompt(
+        {"task_id": "buyvm-slice4096", "plan_tokens": ["SLICE 4096"], "target_url": "https://buyvm.net/x"},
+        "",
+    )
+    assert "monitor.py 当前完整源码" in prompt
+    assert "def parse_offer" in prompt or "def fetch_target" in prompt
+    # The deny-tools prefix must not forbid reasoning over the embedded source.
+    runner_src = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
+    assert "Do not call tools or modify files" not in runner_src
+
+
 def test_repair_agent_uses_fast_ark_provider():
     """The fix agent must use the fast Ark glm-5.2 endpoint (kimi k3 timed out
     at 600s on patch generation 2026-08-10 run 31357764038)."""

@@ -98,6 +98,19 @@ def patch_paths(patch: str) -> list[str]:
     return [p for p in paths if p]
 
 
+def _monitor_source_excerpt(limit: int = 60000) -> str:
+    """Return the current vps_monitor/monitor.py source so the fix agent can
+    build a precise patch without tool access (the agent runs with a
+    deny-tools policy; without the source it can only hallucinate line
+    numbers — observed 2026-08-10 run 31360180962 where glm-5.2 honestly
+    refused to fabricate a patch)."""
+    try:
+        src = (ROOT / "vps_monitor" / "monitor.py").read_text(encoding="utf-8")
+        return src[:limit]
+    except OSError as exc:
+        return f"<monitor.py unreadable: {exc}>"
+
+
 def build_fix_prompt(task: dict, log_excerpt: str) -> str:
     return f"""你是资深 VPS 优惠监控修复工程师。Fatty911/crawl_vps_promotions 仓库中任务解析失败。
 
@@ -111,6 +124,11 @@ def build_fix_prompt(task: dict, log_excerpt: str) -> str:
 {log_excerpt[:8000]}
 ```
 
+## vps_monitor/monitor.py 当前完整源码（请基于它分析根因，禁止凭空构造行号）
+```python
+{_monitor_source_excerpt()}
+```
+
 ## 任务
 分析根因，输出一个**最小、精确**的修复补丁。约束：
 - 只允许修改 `vps_monitor/monitor.py`（解析逻辑），禁止触碰其它任何文件
@@ -118,6 +136,7 @@ def build_fix_prompt(task: dict, log_excerpt: str) -> str:
 - 只输出统一 diff（git apply 可应用），禁止直接写文件内容
 - 不允许删除超过 {MAX_DELETED_LINES} 行
 - 不确定的修复不要输出（宁可不修，不要引入幻觉）
+- 源码已完整提供，diff 的上下文行必须与源码逐字一致
 
 ## 输出格式（严格 JSON，不要 markdown 代码块）
 {{"patch": "<unified diff 文本>", "reasoning": "<简述>", "confidence": 0.0-1.0}}
@@ -194,8 +213,9 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
             "--model", f"{provider['name']}/{provider['model']}",
             "--format", "json",
             "--dir", tmpdir,
-            "Answer the attached prompt directly. Do not call tools or modify files. "
-            "Return only the requested JSON.\n\n" + prompt,
+            "Answer the attached prompt directly. The repository source is "
+            "embedded in the prompt; you do not need tools. Do not modify any "
+            "file. Return only the requested JSON.\n\n" + prompt,
         ]
         try:
             completed = subprocess.run(cmd, capture_output=True, text=True, timeout=600, env=env)
