@@ -178,6 +178,10 @@ def test_repair_agent_uses_fast_ark_provider():
     # --max-turns is NOT a valid opencode run flag (prints help + exits 0,
     # silently skipping the LLM call; verified 2026-08-10 by GLM review).
     assert "--max-turns" not in src
+    # glm-5.2 needs a large output budget or its reasoning exhausts the
+    # 4000-token limit and the text part comes back empty (observed
+    # 2026-08-10 run 31361365239: "fix agent returned nothing").
+    assert "max_tokens=16000" in src
     wf = (ROOT / ".github/workflows/vps-repair.yml").read_text(encoding="utf-8")
     assert "VOLCENGINE_CODING_PLAN_API_KEY" in wf
     assert "NVIDIA_NIM_API_KEY" in wf  # review still depends on NIM

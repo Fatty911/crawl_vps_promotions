@@ -451,7 +451,12 @@ def main() -> int:
     print(f"[vps-repair] all plan tokens confirmed on live page ({len(plan_tokens)})")
 
     fix_prompt = build_fix_prompt(task, args.log_excerpt)
-    content = call_opencode(FIX_PROVIDER, fix_prompt, max_tokens=4000)
+    # glm-5.2 is a reasoning model: with max_tokens=4000 its reasoning
+    # budget exhausts and the final text part comes back empty -> "fix agent
+    # returned nothing" (observed 2026-08-10 run 31361365239). The review
+    # path uses NIM minimax-m3 with max_tokens=1000 which is sufficient for
+    # its short verdict JSON (and has 3 retries).
+    content = call_opencode(FIX_PROVIDER, fix_prompt, max_tokens=16000)
     if not content:
         print("[vps-repair] fix agent returned nothing", file=sys.stderr)
         return 3
