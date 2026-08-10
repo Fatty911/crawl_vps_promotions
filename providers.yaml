@@ -175,7 +175,7 @@ targets:
   - id: cloudcone-ssd-vps-4
     <<: *target_defaults
     priority: 100
-    expected_domains: [app.cloudcone.com]
+    expected_domains: [cloudcone.com, app.cloudcone.com]
     expected_currencies: [USD]
     provider: CloudCone
     plan_name: SSD-VPS-4
@@ -190,7 +190,7 @@ targets:
   - id: cloudcone-ssd-vps-2
     <<: *target_defaults
     priority: 105
-    expected_domains: [app.cloudcone.com]
+    expected_domains: [cloudcone.com, app.cloudcone.com]
     expected_currencies: [USD]
     provider: CloudCone
     plan_name: SSD-VPS-2
