@@ -398,20 +398,8 @@ def fetch_target(
             "requests", "url_domain_mismatch", requested.attempts,
             requested.latency_ms, checked_at,
         )
-    if requested.outcome == "blocked":
-        return TargetResult(
-            target, "blocked", None, requested.http_status, requested.final_url,
-            "requests", requested.block_reason, requested.attempts,
-            requested.latency_ms, checked_at,
-        )
-    if requested.outcome == "error":
-        return TargetResult(
-            target, "error", None, requested.http_status, requested.final_url,
-            "requests", requested.block_reason, requested.attempts,
-            requested.latency_ms, checked_at,
-        )
     parsed = parse_offer(requested.markup, target)
-    if parsed.outcome == "success":
+    if requested.outcome == "success" and parsed.outcome == "success":
         return TargetResult(
             target, "success", parsed.offer, requested.http_status,
             requested.final_url, "requests", None, requested.attempts,
@@ -1501,84 +1489,102 @@ def browser_fetch(url: str) -> HTTPFetch:
             "", "error", None, url, "browser", "playwright_not_installed", 1, 0
         )
     proxy_url = os.getenv("HTTP_PROXY") or os.getenv("http_proxy") or ""
-    rotator = _get_rotator()
-    if rotator:
-        rotator.rotate()
-    launch_kwargs: dict[str, Any] = {}
-    if proxy_url and "127.0.0.1" in proxy_url:
-        launch_kwargs["proxy"] = {"server": proxy_url}
-    try:
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch(headless=True, **launch_kwargs)
-            try:
-                page = browser.new_page(locale="zh-CN")
-                # Browser diagnostics: console messages, JS page errors,
-                # failed network requests, and DOM state. No vision calls —
-                # the agent model may lack image support; these signals are
-                # the closest deterministic view of what a human sees.
-                console_msgs: list[str] = []
-                page_errors: list[str] = []
-                failed_requests: list[str] = []
-                page.on("console", lambda msg: console_msgs.append(msg.text[:120]))
-                page.on("pageerror", lambda err: page_errors.append(str(err)[:160]))
-                page.on(
-                    "requestfailed",
-                    lambda req: failed_requests.append(
-                        f"{req.method} {req.url[:100]} {req.failure}"
-                    ),
-                )
-                response = page.goto(
-                    url,
-                    wait_until="domcontentloaded",
-                    timeout=20_000,
-                )
-                markup = page.content()
-                final_url = page.url
-                # DOM state snapshot (deterministic, mirrors visible page).
-                dom_state = _dom_state_snapshot(page, markup)
-                visible = BeautifulSoup(markup, "html.parser").get_text(" ", strip=True)
-                block_reason = next(
-                    (
-                        word
-                        for word in CHALLENGE_WORDS
-                        if word.casefold() in visible.casefold()
-                    ),
-                    None,
-                )
-                diag = _browser_diag(
-                    console_msgs=console_msgs,
-                    page_errors=page_errors,
-                    failed_requests=failed_requests,
-                    dom_state=dom_state,
-                    visible_len=len(visible),
-                )
-                if rotator:
-                    if block_reason:
-                        _mark_rotator_failure(rotator, blocked=True)
-                    else:
-                        _mark_rotator_success(rotator)
-                return HTTPFetch(
-                    markup,
-                    "blocked" if block_reason else "success",
-                    response.status if response else None,
-                    final_url,
-                    "browser",
-                    block_reason,
-                    1,
-                    int((time.monotonic() - started) * 1000),
-                    browser_diag=diag,
-                )
-            finally:
-                browser.close()
-    except Exception as exc:
+    # Up to 2 node attempts: a blocked (challenge/403) or crashed browser
+    # session rotates to a fresh node and relaunches once — the browser path
+    # is the last resort for blocked targets, so giving it a second node
+    # materially raises the chance the target succeeds in the same round.
+    for attempt in range(2):
+        rotator = _get_rotator()
         if rotator:
-            _mark_rotator_failure(rotator)
-        return HTTPFetch(
-            "", "error", None, url, "browser",
-            f"browser:{type(exc).__name__}", 1,
-            int((time.monotonic() - started) * 1000),
-            browser_diag=f"exception:{type(exc).__name__}:{str(exc)[:120]}",
-        )
+            rotator.rotate()
+        launch_kwargs: dict[str, Any] = {}
+        if proxy_url and "127.0.0.1" in proxy_url:
+            launch_kwargs["proxy"] = {"server": proxy_url}
+        try:
+            with sync_playwright() as playwright:
+                browser = playwright.chromium.launch(headless=True, **launch_kwargs)
+                try:
+                    page = browser.new_page(locale="zh-CN")
+                    # Browser diagnostics: console messages, JS page errors,
+                    # failed network requests, and DOM state. No vision calls —
+                    # the agent model may lack image support; these signals are
+                    # the closest deterministic view of what a human sees.
+                    console_msgs: list[str] = []
+                    page_errors: list[str] = []
+                    failed_requests: list[str] = []
+                    page.on("console", lambda msg: console_msgs.append(msg.text[:120]))
+                    page.on("pageerror", lambda err: page_errors.append(str(err)[:160]))
+                    page.on(
+                        "requestfailed",
+                        lambda req: failed_requests.append(
+                            f"{req.method} {req.url[:100]} {req.failure}"
+                        ),
+                    )
+                    response = page.goto(
+                        url,
+                        wait_until="domcontentloaded",
+                        timeout=20_000,
+                    )
+                    markup = page.content()
+                    final_url = page.url
+                    # DOM state snapshot (deterministic, mirrors visible page).
+                    dom_state = _dom_state_snapshot(page, markup)
+                    visible = BeautifulSoup(markup, "html.parser").get_text(" ", strip=True)
+                    block_reason = next(
+                        (
+                            word
+                            for word in CHALLENGE_WORDS
+                            if word.casefold() in visible.casefold()
+                        ),
+                        None,
+                    )
+                    diag = _browser_diag(
+                        console_msgs=console_msgs,
+                        page_errors=page_errors,
+                        failed_requests=failed_requests,
+                        dom_state=dom_state,
+                        visible_len=len(visible),
+                    )
+                    if rotator:
+                        if block_reason:
+                            _mark_rotator_failure(rotator, blocked=True)
+                        else:
+                            _mark_rotator_success(rotator)
+                    if block_reason and attempt == 0:
+                        # Challenge page on the first node — rotate and relaunch
+                        # once before giving up on the browser path.
+                        continue
+                    return HTTPFetch(
+                        markup,
+                        "blocked" if block_reason else "success",
+                        response.status if response else None,
+                        final_url,
+                        "browser",
+                        block_reason,
+                        attempt + 1,
+                        int((time.monotonic() - started) * 1000),
+                        browser_diag=diag,
+                    )
+                finally:
+                    browser.close()
+        except Exception as exc:
+            if rotator:
+                _mark_rotator_failure(rotator)
+            if attempt == 0:
+                continue
+            return HTTPFetch(
+                "", "error", None, url, "browser",
+                f"browser:{type(exc).__name__}", attempt + 1,
+                int((time.monotonic() - started) * 1000),
+                browser_diag=f"exception:{type(exc).__name__}:{str(exc)[:120]}",
+            )
+    # Both attempts hit a challenge page (or the first crashed and the second
+    # hit one) — surface the last attempt's block result.
+    return HTTPFetch(
+        "", "blocked", None, url, "browser", "browser_blocked_after_retry",
+        max(2, attempt + 1), int((time.monotonic() - started) * 1000),
+        browser_diag="challenge page persisted across two nodes",
+    )
 
 
 def _dom_state_snapshot(page: Any, markup: str) -> dict[str, Any]:

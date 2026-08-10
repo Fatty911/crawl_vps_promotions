@@ -304,10 +304,16 @@ def test_connection_retries_but_403_and_challenge_do_not_retry_or_open_browser()
     challenge = HTTPFetch(
         fixture("challenge.html"), "blocked", 200, target.url, "requests", "captcha", 1, 5
     )
+    # Blocked requests now fall through to the browser fallback (real
+    # fingerprint + fresh node) before giving up — a blocked outcome alone
+    # must not be the end of the round for that target.
     result = fetch_target(
         target,
         request_fn=lambda _: challenge,
-        browser_fn=lambda _: pytest.fail("challenge must not invoke browser"),
+        browser_fn=lambda _: HTTPFetch(
+            fixture("challenge.html"), "blocked", 200, target.url, "browser",
+            "captcha", 1, 5, browser_diag="challenge"
+        ),
     )
     assert result.outcome == "blocked" and result.offer is None
 
@@ -662,3 +668,89 @@ def test_parse_offer_buyvm_plan_card_and_span_heading():
     assert result.offer.offer_id  # non-empty offer id (path fallback)
     # href-less order button falls back to the product page URL itself.
     assert result.offer.product_url == target.url
+
+
+def test_blocked_request_falls_through_to_browser_and_browser_success_counts():
+    """A blocked request must not end the round: the browser fallback (real
+    fingerprint + rotated node) can still win the offer. Regression for the
+    2026-08-10 decision that blocked/error targets deserve the browser path
+    instead of being returned immediately."""
+    target = load_targets(load_config())[0]
+    blocked = HTTPFetch(
+        fixture("challenge.html"), "blocked", 403, target.url, "requests", "http_403", 1, 5
+    )
+    good = HTTPFetch(fixture("zorocloud.html"), "success", 200, target.url, "browser", None, 1, 5)
+    result = fetch_target(
+        target,
+        request_fn=lambda _: blocked,
+        browser_fn=lambda _: good,
+    )
+    assert result.outcome == "success" and result.method == "browser"
+
+
+def test_error_request_falls_through_to_browser():
+    """Connection-error requests (no HTTP status) also get the browser path."""
+    target = load_targets(load_config())[0]
+    failed = HTTPFetch("", "error", None, target.url, "requests", "connection:ConnectionError", 3, 5)
+    good = HTTPFetch(fixture("zorocloud.html"), "success", 200, target.url, "browser", None, 1, 5)
+    result = fetch_target(
+        target,
+        request_fn=lambda _: failed,
+        browser_fn=lambda _: good,
+    )
+    assert result.outcome == "success" and result.method == "browser"
+
+
+def test_browser_fetch_retries_on_challenge_then_returns_blocked():
+    """browser_fetch rotates to a second node once when the first node shows a
+    challenge page; if the second is also blocked the outcome stays blocked."""
+    target = load_targets(load_config())[0]
+    # A challenge page that is identical on both nodes: browser_fetch must
+    # call sync_playwright twice (two nodes) and still report blocked.
+    calls = []
+
+    class FakePage:
+        def content(self):
+            return fixture("challenge.html")
+
+        @property
+        def url(self):
+            return target.url
+
+        def on(self, *_args):
+            pass
+
+        def goto(self, *_args, **_kwargs):
+            return None
+
+    class FakeBrowser:
+        def new_page(self, **_kwargs):
+            return FakePage()
+
+        def close(self):
+            pass
+
+    class FakePlaywright:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        @property
+        def chromium(self):
+            return self
+
+        def launch(self, **_kwargs):
+            calls.append(_kwargs)
+            return FakeBrowser()
+
+    import vps_monitor.monitor as monitor_mod
+    original = monitor_mod.sync_playwright
+    monitor_mod.sync_playwright = lambda: FakePlaywright()
+    try:
+        result = monitor_mod.browser_fetch(target.url)
+    finally:
+        monitor_mod.sync_playwright = original
+    assert len(calls) == 2  # two node attempts
+    assert result.outcome == "blocked"
