@@ -179,14 +179,14 @@ targets:
     expected_currencies: [USD]
     provider: CloudCone
     plan_name: SSD-VPS-4
-    plan_tokens: [SSD-VPS-4, 4 TB]
-    url: https://app.cloudcone.com/vps/358/create?token=ssd-vps-4
+    plan_tokens: [SSD VPS 4]
+    url: https://cloudcone.com/vps/#ssd-vps-4
     region: US
     provider_claimed_routes: [BGP]
     reliability: 6
     oversell: medium
     reliability_note: 按小时计费特色，黑五促销多，社区口碑中等
-    specs: {cpu: 2, ram_gb: 4, storage_gb: 80, bandwidth_gbps: 4}
+    specs: {cpu: 8, ram_gb: 4, storage_gb: 120, bandwidth_gbps: 10}
   - id: cloudcone-ssd-vps-2
     <<: *target_defaults
     priority: 105
@@ -194,13 +194,13 @@ targets:
     expected_currencies: [USD]
     provider: CloudCone
     plan_name: SSD-VPS-2
-    plan_tokens: [SSD-VPS-2, 2 TB]
-    url: https://app.cloudcone.com/vps/357/create?token=ssd-vps-2
+    plan_tokens: [SSD VPS 2]
+    url: https://cloudcone.com/vps/#ssd-vps-2
     region: US
     provider_claimed_routes: [BGP]
     reliability: 6
     oversell: medium
-    specs: {cpu: 1, ram_gb: 2, storage_gb: 40, bandwidth_gbps: 2}
+    specs: {cpu: 4, ram_gb: 2, storage_gb: 60, bandwidth_gbps: 7}
   # ============ BuyVM ============
   - id: buyvm-slice4096
     <<: *target_defaults

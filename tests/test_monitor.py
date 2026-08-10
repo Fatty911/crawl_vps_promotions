@@ -759,3 +759,26 @@ def test_browser_fetch_retries_on_challenge_then_returns_blocked():
         monitor_mod.sync_playwright = original
     assert len(calls) == 2  # two node attempts
     assert result.outcome == "blocked"
+
+
+def test_parse_offer_cloudcone_pricing_card_and_deploy_button():
+    """CloudCone lists plans as div.pricing cards (not .plan/.package-card);
+    the SSD VPS 2 card's CTA is 'Deploy VPS' while SSD VPS 4's is
+    'Purchase Plan' — both must be recognised (observed 2026-08-10:
+    tokens matched the page but _has_enabled_order_control missed 'deploy'
+    and the selector list missed .pricing, yielding detail_unverified /
+    no_exact_same_card_offer on live pages)."""
+    markup = fixture("cloudcone_vps.html")
+    targets = {t.id: t for t in load_targets(load_config())}
+    for tid, expected in (
+        ("cloudcone-ssd-vps-2", (46.0, "yearly")),
+        ("cloudcone-ssd-vps-4", (92.0, "yearly")),
+    ):
+        result = parse_offer(markup, targets[tid])
+        assert result.outcome == "success", (tid, result.block_reason)
+        assert result.offer is not None
+        assert result.offer.amount == expected[0], (tid, result.offer.amount)
+        assert result.offer.billing_period == expected[1]
+        assert result.offer.availability == "in_stock"
+        assert result.offer.offer_id and "token-" in result.offer.offer_id
+        assert result.offer.product_url.startswith("https://app.cloudcone.com/vps/")

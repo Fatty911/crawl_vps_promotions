@@ -1256,7 +1256,7 @@ def _has_enabled_order_control(card: Any) -> bool:
         label = f"{control.get_text(' ', strip=True)} {control.get('value', '')}".casefold()
         if (
             not control.has_attr("disabled")
-            and any(word in label for word in ("order", "buy", "订购", "购买"))
+            and any(word in label for word in ("order", "buy", "订购", "购买", "purchase", "deploy"))
         ):
             return True
     return False
@@ -1265,7 +1265,7 @@ def _has_enabled_order_control(card: Any) -> bool:
 def _specific_order_url(card: Any, target: PlanTarget) -> str | None:
     for anchor in card.select("a[href]"):
         label = anchor.get_text(" ", strip=True).casefold()
-        if not any(word in label for word in ("order", "buy", "订购", "购买", "checkout")):
+        if not any(word in label for word in ("order", "buy", "订购", "购买", "checkout", "purchase", "deploy")):
             continue
         candidate = urljoin(target.url, str(anchor.get("href", "")))
         if target_url_allowed(target, candidate) and _offer_id(target, candidate):
@@ -1421,7 +1421,7 @@ def parse_offer(markup: str, target: PlanTarget) -> ParseResult:
     # .plan is the BuyVM card class (div.plan.fourplan); without it the
     # card loop never matches (observed 2026-08-10: buyvm-slice4096/2048
     # reported no_exact_same_card_offer while the cards are on the page).
-    selectors = ".package-card, .product, .package, .plan-card, .product-card, .plan, tr"
+    selectors = ".package-card, .product, .package, .plan-card, .product-card, .plan, .pricing, tr"
     for card in visible_soup.select(selectors):
         card_text = card.get_text(" ", strip=True)
         order_url = _specific_order_url(card, target)
