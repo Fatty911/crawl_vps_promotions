@@ -265,6 +265,13 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
 
 def parse_fix_response(text: str) -> dict:
     text = re.sub(r"^```(?:json)?|```$", "", text.strip(), flags=re.MULTILINE).strip()
+    # The model often wraps the JSON with prose (e.g. "我分析了代码，以下是补丁：
+    # {...}"). Extract the first { ... } span before parsing (observed
+    # 2026-08-10 run 31366780525: reasoning=unparseable with real content).
+    brace_start = text.find("{")
+    brace_end = text.rfind("}")
+    if brace_start >= 0 and brace_end > brace_start:
+        text = text[brace_start:brace_end + 1]
     try:
         data = json.loads(text)
     except json.JSONDecodeError:

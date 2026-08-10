@@ -168,6 +168,31 @@ def test_repair_fix_prompt_embeds_monitor_source():
     assert "Do not call tools or modify files" not in runner_src
 
 
+def test_parse_fix_response_extracts_prose_wrapped_json():
+    """The fix agent wraps its JSON with prose (observed 2026-08-10 run
+    31366780525: reasoning=unparseable with real content). The parser must
+    extract the first { ... } span before json.loads."""
+    import sys as _sys
+
+    _sys.path.insert(0, str(ROOT / "scripts"))
+    from self_repair_runner_vps import parse_fix_response
+
+    wrapped = (
+        "我分析了代码，以下是补丁：\n"
+        '```json\n{"patch": "--- a/vps_monitor/monitor.py\\n+++ b/vps_monitor/monitor.py\\n", '
+        '"reasoning": "fix selector", "confidence": 0.85}\n```\n'
+        "希望对你有帮助。"
+    )
+    parsed = parse_fix_response(wrapped)
+    assert parsed["confidence"] == 0.85
+    assert "monitor.py" in parsed["patch"]
+    assert parsed["reasoning"] == "fix selector"
+    # Plain JSON still parses.
+    assert parse_fix_response('{"patch": "x", "confidence": 0.5}')["confidence"] == 0.5
+    # Garbage stays unparseable (safe default).
+    assert parse_fix_response("not json at all")["confidence"] == 0.0
+
+
 def test_repair_agent_uses_fast_ark_provider():
     """The fix agent must use the fast Ark glm-5.2 endpoint (kimi k3 timed out
     at 600s on patch generation 2026-08-10 run 31357764038)."""
