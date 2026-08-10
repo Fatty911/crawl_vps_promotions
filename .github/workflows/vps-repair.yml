@@ -38,11 +38,15 @@ jobs:
           KIMI_CODINGPLAN_API_KEY: ${{ secrets.KIMI_CODINGPLAN_API_KEY }}
           NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
         run: |
-          if [ -z "$KIMI_CODINGPLAN_API_KEY" ] || [ -z "$NVIDIA_NIM_API_KEY" ]; then
-            echo "P0b disabled: missing KIMI_CODINGPLAN_API_KEY or NVIDIA_NIM_API_KEY secret"
+          if [ -z "$VOLCENGINE_CODING_PLAN_API_KEY" ] && [ -z "$KIMI_CODINGPLAN_API_KEY" ]; then
+            echo "P0b disabled: missing repair-agent key (VOLCENGINE_CODING_PLAN_API_KEY or KIMI_CODINGPLAN_API_KEY)"
             exit 1
           fi
-          echo "both secrets present"
+          if [ -z "$NVIDIA_NIM_API_KEY" ]; then
+            echo "P0b disabled: missing NVIDIA_NIM_API_KEY (required for the two-family review)"
+            exit 1
+          fi
+          echo "repair-agent + review keys present"
 
       - name: Checkout
         uses: actions/checkout@v6
@@ -106,6 +110,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           KIMI_CODINGPLAN_API_KEY: ${{ secrets.KIMI_CODINGPLAN_API_KEY }}
           NVIDIA_NIM_API_KEY: ${{ secrets.NVIDIA_NIM_API_KEY }}
+          VOLCENGINE_CODING_PLAN_API_KEY: ${{ secrets.VOLCENGINE_CODING_PLAN_API_KEY }}
           UPSTREAM_RUN_ID: ${{ inputs.run_id }}
         run: |
           python - <<'PY'

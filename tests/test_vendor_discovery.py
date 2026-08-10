@@ -146,6 +146,21 @@ def test_runner_stages_before_hashes_diff():
     assert add_pos < diff_pos
 
 
+def test_repair_agent_uses_fast_ark_provider():
+    """The fix agent must use the fast Ark glm-5.2 endpoint (kimi k3 timed out
+    at 600s on patch generation 2026-08-10 run 31357764038)."""
+    src = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
+    assert "volcengine-coding" in src
+    assert "glm-5.2" in src
+    assert "ark.cn-beijing.volces.com/api/coding/v3" in src
+    # --max-turns is NOT a valid opencode run flag (prints help + exits 0,
+    # silently skipping the LLM call; verified 2026-08-10 by GLM review).
+    assert "--max-turns" not in src
+    wf = (ROOT / ".github/workflows/vps-repair.yml").read_text(encoding="utf-8")
+    assert "VOLCENGINE_CODING_PLAN_API_KEY" in wf
+    assert "NVIDIA_NIM_API_KEY" in wf  # review still depends on NIM
+
+
 def test_repair_workflow_installs_playwright_browser():
     """vps-repair must install the Playwright chromium binary like vps-monitor;
     verify's browser-render fallback cannot start without it (observed

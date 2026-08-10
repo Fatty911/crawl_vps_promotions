@@ -71,11 +71,13 @@ REVIEW_PROVIDERS = [
 ]
 
 # Repair agent provider (fix generation only; key consumed by OpenCode CLI).
+# Ark glm-5.2 answers in seconds; kimi-coding-plan/k3 repeatedly timed out at
+# 600s on patch generation (observed 2026-08-10 on run 31357764038).
 FIX_PROVIDER = {
-    "name": "kimi-coding-plan",
-    "base_url": "https://api.kimi.com/coding/v1",
-    "env_key": "KIMI_CODINGPLAN_API_KEY",
-    "model": "k3",
+    "name": "volcengine-coding",
+    "base_url": "https://ark.cn-beijing.volces.com/api/coding/v3",
+    "env_key": "VOLCENGINE_CODING_PLAN_API_KEY",
+    "model": "glm-5.2",
 }
 
 # Trust-root whitelist: ONLY this file may be changed by auto-repair.
