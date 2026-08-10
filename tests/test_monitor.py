@@ -628,3 +628,34 @@ def test_product_gate_is_false_at_seven_and_true_at_eight_successes():
     assert row["provider_claimed_routes"]
     assert "parsed_route_evidence" in row
     assert row["measured_routes"] is None
+
+
+def test_parse_offer_buyvm_plan_card_and_span_heading():
+    """BuyVM cards are div.plan.fourplan with span-split headings
+    ('SLICE <span>4096</span>'). parse_offer must match them (observed
+    2026-08-10: buyvm-slice4096/2048 reported no_exact_same_card_offer while
+    the cards are on the page; the selector list lacked .plan and the text
+    fallback required the full token in a single text node)."""
+    targets = {t.id: t for t in load_targets(load_config())}
+    target = targets["buyvm-slice4096"]
+    markup = """<html><body>
+    <div class="plan fourplan">
+      <h2>SLICE <span>4096</span></h2>
+      <ul>
+        <li><strong>1 Core</strong> @ 3.50+ GHz Dedicated CPU Usage</li>
+        <li><strong>4096 MB</strong> Memory</li>
+        <li><strong>80 GB SSD</strong> Storage</li>
+        <li>Unmetered Bandwidth</li>
+        <li>1 IPv4 Address</li>
+      </ul>
+      <p>$15.00 per month</p>
+      <a href="https://buyvm.net/kvm-dedicated-server-slices#slice4096">ORDER THIS PACKAGE</a>
+    </div>
+    </body></html>"""
+    result = parse_offer(markup, target)
+    assert result.outcome == "success", f"expected success, got {result.outcome}: {result.block_reason}"
+    assert result.offer is not None
+    assert result.offer.amount == 15.00
+    assert result.offer.billing_period == "monthly"
+    assert result.offer.offer_id  # non-empty offer id (path fallback)
+    assert result.offer.product_url.endswith("#slice4096")

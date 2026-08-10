@@ -1422,7 +1422,10 @@ def parse_offer(markup: str, target: PlanTarget) -> ParseResult:
         ):
             return ParseResult("rejected", block_reason="currency_or_period_conflict")
         return json_result
-    selectors = ".package-card, .product, .package, .plan-card, .product-card, tr"
+    # .plan is the BuyVM card class (div.plan.fourplan); without it the
+    # card loop never matches (observed 2026-08-10: buyvm-slice4096/2048
+    # reported no_exact_same_card_offer while the cards are on the page).
+    selectors = ".package-card, .product, .package, .plan-card, .product-card, .plan, tr"
     for card in visible_soup.select(selectors):
         card_text = card.get_text(" ", strip=True)
         order_url = _specific_order_url(card, target)
@@ -1449,8 +1452,12 @@ def parse_offer(markup: str, target: PlanTarget) -> ParseResult:
         if _matches_target(card_text, target) and _parse_bound_price_period(card_text):
             return ParseResult("rejected", block_reason="detail_unverified")
     needle = target.plan_tokens[0].casefold()
+    # span-split headings ("SLICE <span>4096</span>") yield single text nodes
+    # like "SLICE " that never contain the full token; match the first word
+    # instead (BuyVM observed 2026-08-10).
+    needle_first = needle.split()[0]
     for text_node in visible_soup.find_all(string=True):
-        if needle not in str(text_node).casefold():
+        if needle_first not in str(text_node).casefold():
             continue
         card = text_node.parent
         for _ in range(5):
