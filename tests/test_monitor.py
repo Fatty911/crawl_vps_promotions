@@ -649,7 +649,9 @@ def test_parse_offer_buyvm_plan_card_and_span_heading():
         <li>1 IPv4 Address</li>
       </ul>
       <p>$15.00 per month</p>
-      <a href="https://buyvm.net/kvm-dedicated-server-slices#slice4096">ORDER THIS PACKAGE</a>
+      <!-- BuyVM order buttons have NO href (JS-driven checkout); the page
+           itself is the product page (observed 2026-08-10). -->
+      <a data-group="slice" data-plan="4096" class="orderbutton button greenbutton">ORDER THIS PACKAGE</a>
     </div>
     </body></html>"""
     result = parse_offer(markup, target)
@@ -658,4 +660,5 @@ def test_parse_offer_buyvm_plan_card_and_span_heading():
     assert result.offer.amount == 15.00
     assert result.offer.billing_period == "monthly"
     assert result.offer.offer_id  # non-empty offer id (path fallback)
-    assert result.offer.product_url.endswith("#slice4096")
+    # href-less order button falls back to the product page URL itself.
+    assert result.offer.product_url == target.url

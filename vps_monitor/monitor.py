@@ -1282,6 +1282,14 @@ def _specific_order_url(card: Any, target: PlanTarget) -> str | None:
         candidate = urljoin(target.url, str(anchor.get("href", "")))
         if target_url_allowed(target, candidate) and _offer_id(target, candidate):
             return candidate
+    # BuyVM-style order buttons are <a data-plan="4096" class="orderbutton">
+    # with NO href (JS-driven checkout). The page itself is the product page,
+    # so binding target.url is honest — not a fabricated URL (observed
+    # 2026-08-10: without this fallback product_url is None and the offer is
+    # dropped as detail_unverified even though the card parses fine).
+    card_text = card.get_text(" ", strip=True)
+    if _matches_target(card_text, target):
+        return target.url
     return None
 
 
