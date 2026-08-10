@@ -176,9 +176,14 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
         print(f"[vps-repair] missing {provider['env_key']}", file=sys.stderr)
         return None
     base_url = provider["base_url"].rstrip("/")
+    # ALL tools denied (including read): the source is embedded in the
+    # prompt, so any tool call is wasted output budget. In plan-agent mode
+    # glm-5.2 burned the full 16000-token output on tool-call attempts that
+    # were then discarded (step_finish reason=length, no text part, no
+    # tool_use event; observed 2026-08-10 run 31377327449).
     read_only = {
         "*": "deny",
-        "read": "allow",
+        "read": "deny",
         "edit": "deny",
         "bash": "deny",
         "webfetch": "deny",

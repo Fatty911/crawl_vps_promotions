@@ -203,6 +203,10 @@ def test_parse_fix_response_extracts_prose_wrapped_json():
     # produced no final answer; observed 2026-08-10 run 31369421651).
     runner_src = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
     assert "DO NOT use any tool" in runner_src
+    # All tools denied INCLUDING read: with the source embedded, tool calls
+    # only burn output budget (run 31377327449: output=16000, reason=length,
+    # no text part because plan-agent tool attempts were discarded).
+    assert '"read": "deny"' in runner_src
     # Parse failures must print the raw text for diagnosis.
     assert "parse_fix_response failed" in runner_src
 
