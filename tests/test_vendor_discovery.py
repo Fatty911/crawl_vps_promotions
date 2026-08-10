@@ -187,6 +187,18 @@ def test_repair_agent_uses_fast_ark_provider():
     # returned nothing after the 16000 fix).
     assert "event types:" in src
     assert "stdout bytes:" in src
+    # The fix agent must run with --dir at the repo root (read permission
+    # reaches monitor.py) with the provider config in a gitignored scratch
+    # dir; a bare temp dir made the model's read tool fail -> no text part
+    # (observed 2026-08-10 run 31364202598: tool_use events, no text).
+    assert '"--dir", str(ROOT)' in src
+    # Provider config must live at ROOT/opencode.json (opencode's project
+    # config discovery only scans <--dir>/opencode.json, never a
+    # subdirectory; verified 2026-08-10 by GLM review).
+    assert 'cfg_path = ROOT / "opencode.json"' in src
+    assert "finally:" in src  # config is cleaned up after the call
+    gi = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert "/opencode.json" in gi
     wf = (ROOT / ".github/workflows/vps-repair.yml").read_text(encoding="utf-8")
     assert "VOLCENGINE_CODING_PLAN_API_KEY" in wf
     assert "NVIDIA_NIM_API_KEY" in wf  # review still depends on NIM
@@ -335,7 +347,13 @@ def test_runner_uses_project_config_file_not_env():
         assert 'env["OPENCODE_CONFIG_CONTENT"]' not in src
         assert "OPENCODE_CONFIG_CONTENT = json.dumps" not in src
         assert '"opencode.json"' in src
-        assert '"--dir", tmpdir' in src
+        if script == "vendor_extend_runner.py":
+            assert '"--dir", tmpdir' in src
+        else:
+            # self_repair_runner runs with --dir at the repo root so the
+            # model's read tool reaches monitor.py (see 2026-08-10 run
+            # 31364202598: tool_use events, no text with a bare temp dir).
+            assert '"--dir", str(ROOT)' in src
 
 
 def test_runner_uses_global_exact_provider_model_names():

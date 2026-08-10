@@ -198,25 +198,31 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
     env["OPENCODE_DISABLE_AUTOUPDATE"] = "1"
     env["OPENCODE_DISABLE_TELEMETRY"] = "1"
     opencode_bin = os.environ.get("OPENCODE_BIN", "opencode")
-    with tempfile.TemporaryDirectory(prefix="vps-repair-") as tmpdir:
-        # Write the provider config as a PROJECT-level opencode.json inside
-        # --dir (verified 2026-08-08 on opencode 1.18.15: OPENCODE_CONFIG_CONTENT
-        # env injection returns 404; a project opencode.json registers the
-        # provider on a fresh runner).
-        (Path(tmpdir) / "opencode.json").write_text(
-            json.dumps(config, ensure_ascii=False), encoding="utf-8"
-        )
-        # Pass the prompt as a positional message (subprocess list-args, no
-        # shell quoting issues). --file is an attachment, not a message source.
-        cmd = [
-            opencode_bin, "run", "--pure", "--agent", "plan",
-            "--model", f"{provider['name']}/{provider['model']}",
-            "--format", "json",
-            "--dir", tmpdir,
-            "Answer the attached prompt directly. The repository source is "
-            "embedded in the prompt; you do not need tools. Do not modify any "
-            "file. Return only the requested JSON.\n\n" + prompt,
-        ]
+    # --dir points at the repo root so the model's read permission reaches
+    # the real vps_monitor/monitor.py. With a bare temp dir the model tried
+    # to read the file, failed, and produced no text part (observed
+    # 2026-08-10 run 31364202598: tool_use events but no text).
+    # The provider config MUST live at ROOT/opencode.json: opencode's project
+    # config discovery only scans <--dir>/opencode.json (and parent dirs),
+    # never subdirectories like .repair-tmp/ (verified 2026-08-10 by review).
+    # It is removed in a finally block and also gitignored as a safety net.
+    cfg_path = ROOT / "opencode.json"
+    if cfg_path.exists():
+        cfg_path.unlink()
+    cfg_path.write_text(json.dumps(config, ensure_ascii=False), encoding="utf-8")
+    # Pass the prompt as a positional message (subprocess list-args, no
+    # shell quoting issues). --file is an attachment, not a message source.
+    cmd = [
+        opencode_bin, "run", "--pure", "--agent", "plan",
+        "--model", f"{provider['name']}/{provider['model']}",
+        "--format", "json",
+        "--dir", str(ROOT),
+        "Answer the attached prompt directly. The repository source is "
+        "embedded in the prompt; you may also use read-only tools to "
+        "inspect files under this directory. Do not modify any file. "
+        "Return only the requested JSON.\n\n" + prompt,
+    ]
+    try:
         try:
             completed = subprocess.run(cmd, capture_output=True, text=True, timeout=600, env=env)
         except Exception as exc:
@@ -250,6 +256,11 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
                 file=sys.stderr,
             )
         return "\n".join(parts).strip() or None
+    finally:
+        try:
+            cfg_path.unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def parse_fix_response(text: str) -> dict:
