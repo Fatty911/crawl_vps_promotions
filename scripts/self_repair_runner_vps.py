@@ -99,16 +99,23 @@ def patch_paths(patch: str) -> list[str]:
 
 
 def _monitor_source_excerpt(limit: int = 60000) -> str:
-    """Return the current vps_monitor/monitor.py source so the fix agent can
-    build a precise patch without tool access (the agent runs with a
-    deny-tools policy; without the source it can only hallucinate line
-    numbers — observed 2026-08-10 run 31360180962 where glm-5.2 honestly
-    refused to fabricate a patch)."""
+    """Return the parsing-relevant portion of vps_monitor/monitor.py so the
+    fix agent can build a precise patch without tool access.
+
+    Only the parsing core is embedded (matches/price/period/availability/
+    offer/parse_offer/browser_fetch). Embedding the whole 60K file made
+    glm-5.2 exhaust its 16000-token output budget before producing a final
+    answer (observed 2026-08-10 run 31374243994: step_finish reason=length,
+    output=16000, no text part)."""
     try:
         src = (ROOT / "vps_monitor" / "monitor.py").read_text(encoding="utf-8")
-        return src[:limit]
     except OSError as exc:
         return f"<monitor.py unreadable: {exc}>"
+    start = src.find("def _matches_target")
+    end = src.find("def browser_fetch")
+    if start < 0 or end <= start:
+        return src[:limit]
+    return src[start:end]
 
 
 def build_fix_prompt(task: dict, log_excerpt: str) -> str:
@@ -217,11 +224,11 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
         "--model", f"{provider['name']}/{provider['model']}",
         "--format", "json",
         "--dir", str(ROOT),
-        "Answer the attached prompt directly. The complete repository "
-        "source is embedded in the prompt — DO NOT use any tool (a "
-        "tool-use loop with 18 tool calls produced no final answer, "
-        "observed 2026-08-10 run 31369421651). Do not modify any file. "
-        "Return only the requested JSON.\n\n" + prompt,
+        "Answer the attached prompt directly. The parsing-relevant source "
+        "is embedded in the prompt — DO NOT use any tool, DO NOT repeat or "
+        "analyse the code in your answer. Output ONLY the requested JSON "
+        "object, nothing else (no prose, no markdown fence). "
+        "Do not modify any file.\n\n" + prompt,
     ]
     try:
         try:

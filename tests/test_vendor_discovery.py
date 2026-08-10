@@ -156,13 +156,21 @@ def test_repair_fix_prompt_embeds_monitor_source():
     from self_repair_runner_vps import _monitor_source_excerpt, build_fix_prompt
 
     src = _monitor_source_excerpt()
-    assert "def parse_offer" in src or "def fetch_target" in src
+    assert "def _matches_target" in src
+    assert "def parse_offer" in src
+    # browser_fetch is the boundary; the excerpt stops before it but includes
+    # all parsing helpers (matches/price/period/availability/offer/json-ld).
+    assert "def _json_ld_offers" in src
+    # Narrow excerpt: embedding the full 60K file exhausted glm-5.2's
+    # 16000-token output budget (step_finish reason=length, no text part;
+    # observed 2026-08-10 run 31374243994).
+    assert len(src) < 30000
     prompt = build_fix_prompt(
         {"task_id": "buyvm-slice4096", "plan_tokens": ["SLICE 4096"], "target_url": "https://buyvm.net/x"},
         "",
     )
     assert "monitor.py 当前完整源码" in prompt
-    assert "def parse_offer" in prompt or "def fetch_target" in prompt
+    assert "def _matches_target" in prompt
     # The deny-tools prefix must not forbid reasoning over the embedded source.
     runner_src = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
     assert "Do not call tools or modify files" not in runner_src
