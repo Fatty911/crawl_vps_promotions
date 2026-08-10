@@ -191,6 +191,12 @@ def test_parse_fix_response_extracts_prose_wrapped_json():
     assert parse_fix_response('{"patch": "x", "confidence": 0.5}')["confidence"] == 0.5
     # Garbage stays unparseable (safe default).
     assert parse_fix_response("not json at all")["confidence"] == 0.0
+    # The fix prompt must forbid tool use (a tool loop with 18 calls
+    # produced no final answer; observed 2026-08-10 run 31369421651).
+    runner_src = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
+    assert "DO NOT use any tool" in runner_src
+    # Parse failures must print the raw text for diagnosis.
+    assert "parse_fix_response failed" in runner_src
 
 
 def test_repair_agent_uses_fast_ark_provider():

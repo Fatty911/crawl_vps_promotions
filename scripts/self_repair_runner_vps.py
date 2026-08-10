@@ -217,9 +217,10 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
         "--model", f"{provider['name']}/{provider['model']}",
         "--format", "json",
         "--dir", str(ROOT),
-        "Answer the attached prompt directly. The repository source is "
-        "embedded in the prompt; you may also use read-only tools to "
-        "inspect files under this directory. Do not modify any file. "
+        "Answer the attached prompt directly. The complete repository "
+        "source is embedded in the prompt — DO NOT use any tool (a "
+        "tool-use loop with 18 tool calls produced no final answer, "
+        "observed 2026-08-10 run 31369421651). Do not modify any file. "
         "Return only the requested JSON.\n\n" + prompt,
     ]
     try:
@@ -274,7 +275,12 @@ def parse_fix_response(text: str) -> dict:
         text = text[brace_start:brace_end + 1]
     try:
         data = json.loads(text)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as exc:
+        print(
+            f"[vps-repair] parse_fix_response failed: {exc}; "
+            f"raw text ({len(text)} chars): {text[:500]!r}",
+            file=sys.stderr,
+        )
         return {"patch": "", "reasoning": "unparseable", "confidence": 0.0}
     try:
         confidence = float(data.get("confidence", 0))
