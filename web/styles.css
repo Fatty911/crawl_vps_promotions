@@ -105,3 +105,72 @@ a:hover { text-decoration: underline; }
   .filters { gap: .4rem; }
   .filters input, .filters select { max-width: 120px; }
 }
+
+/* 多级排序面板（仿 Excel） */
+.sort-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 12px;
+  background: #f6f8fa;
+  border: 1px solid #d8dee4;
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+.sort-title {
+  font-weight: 600;
+  color: #333;
+}
+.sort-rule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fff;
+  border: 1px solid #d8dee4;
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+.sort-rule span {
+  font-size: 12px;
+  color: #666;
+}
+.sort-rule select {
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  padding: 2px 4px;
+  font-size: 13px;
+}
+.sort-rule button {
+  border: 1px solid #ccc;
+  border-radius: 3px;
+  background: #f0f0f0;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+.sort-rule button:hover {
+  background: #e0e0e0;
+}
+.sort-rule .sort-remove {
+  color: #b00;
+  font-weight: 700;
+}
+
+/* 线路徽章 + 北京快高亮 */
+.route-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  margin-right: 4px;
+  border-radius: 3px;
+  font-size: 12px;
+  background: #eef1f5;
+  border: 1px solid #d0d7de;
+  color: #333;
+}
+.route-badge.route-fast {
+  background: #fff4cc;
+  border-color: #e6b800;
+  color: #7a5c00;
+  font-weight: 600;
+}

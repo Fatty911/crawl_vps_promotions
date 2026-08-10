@@ -12,8 +12,10 @@ const billingFilter = document.getElementById("billing-filter");
 const availabilityFilter = document.getElementById("availability-filter");
 const routeFilter = document.getElementById("route-filter");
 const reliabilityFilter = document.getElementById("reliability-filter");
-const sortOrder = document.getElementById("sort-order");
 const exportCsv = document.getElementById("export-csv");
+const sortRulesNode = document.getElementById("sort-rules");
+const sortAdd = document.getElementById("sort-add");
+const sortClear = document.getElementById("sort-clear");
 const historyLoad = document.getElementById("history-load");
 const historyList = document.getElementById("history-list");
 const historyPrev = document.getElementById("history-prev");
@@ -26,6 +28,22 @@ const HISTORY_PAGE_SIZE = 50;
 let rows = [];
 let historyRows = [];
 let historyPage = 0;
+let sortRules = [{field: "updated", dir: "desc"}];
+
+// Sortable fields (Excel-style: field + direction). "specs" fields are
+// read from row.specs (cpu / ram_gb / storage_gb).
+const SORT_FIELDS = [
+  ["updated", "更新时间"], ["provider", "服务商"], ["plan_name", "套餐"],
+  ["region", "地区"], ["cpu", "CPU 核数"], ["ram_gb", "内存"],
+  ["storage_gb", "硬盘大小"], ["disk_type", "硬盘类型"],
+  ["amount", "原始金额"], ["monthly_amount", "月化"], ["value_score", "性价比"],
+  ["reliability", "可靠性"], ["oversell", "超售"], ["availability", "库存"],
+];
+
+// Routes that are fast for Beijing users (China-optimized premium lines).
+const BEIJING_FAST_ROUTES = [
+  "cn2 gia-e", "cn2 gia", "as9929", "cmin2", "cmi", "cug",
+];
 
 function setState(name, message) {
   stateNode.dataset.state = name;
@@ -64,9 +82,82 @@ function oversellLabel(level) {
   return map[String(level || "").toLowerCase()] || String(level || "—");
 }
 
+function specValue(row, field) {
+  const specs = row.specs || {};
+  const value = specs[field];
+  return value === null || value === undefined ? null : Number(value);
+}
+
+function diskType(row) {
+  // Infer disk type from plan name + plan keywords (nvme/ssd/hdd).
+  const haystack = `${row.plan_name || ""} ${(row.plan_tokens || []).join(" ")}`.toLowerCase();
+  if (/\bnvme\b|nvme/i.test(haystack)) return "NVMe";
+  if (/\bssd\b/i.test(haystack)) return "SSD";
+  if (/\bhdd\b/i.test(haystack)) return "HDD";
+  return null;
+}
+
+function diskLabel(row) {
+  const type = diskType(row);
+  const gb = specValue(row, "storage_gb");
+  const size = gb === null ? "" : `${gb}GB`;
+  if (type && size) return `${type} ${size}`;
+  return type || size || null;
+}
+
+function routeCell(routes) {
+  const node = document.createElement("td");
+  if (!routes || routes.length === 0) {
+    node.textContent = "—";
+    return node;
+  }
+  routes.forEach((route) => {
+    const badge = document.createElement("span");
+    badge.className = "route-badge";
+    badge.textContent = route;
+    const lower = String(route).toLowerCase();
+    // Beijing-fast premium routes get a highlight (CN2 GIA / AS9929 / CMIN2
+    // / CMI / CUG / CN2 — 中国优化精品线路，北京访问快).
+    if (BEIJING_FAST_ROUTES.some((fast) => lower.includes(fast))) {
+      badge.classList.add("route-fast");
+      badge.title = "北京访问快（中国优化精品线路）";
+    }
+    node.append(badge);
+    node.append(document.createTextNode(" "));
+  });
+  return node;
+}
+
 function numeric(row, field) {
+  if (field === "cpu" || field === "ram_gb" || field === "storage_gb") {
+    const value = specValue(row, field);
+    return row.outcome === "success" && value !== null ? value : Number.POSITIVE_INFINITY;
+  }
   const value = Number(row[field]);
   return row.outcome === "success" && Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+}
+
+function sortKey(row, field) {
+  switch (field) {
+    case "cpu":
+    case "ram_gb":
+    case "storage_gb": {
+      const value = specValue(row, field);
+      return value === null ? Number.POSITIVE_INFINITY : value;
+    }
+    case "disk_type":
+      return diskType(row) || "~";
+    case "provider":
+    case "plan_name":
+    case "region":
+    case "oversell":
+    case "availability":
+      return String(row[field] || "~");
+    case "updated":
+      return timestamp(row);
+    default:
+      return numeric(row, field);
+  }
 }
 
 function timestamp(row) {
@@ -80,9 +171,26 @@ function matchSearch(row, needle) {
     row.provider, row.plan_name, row.region,
     (row.provider_claimed_routes || []).join(" "),
     row.reliability_note, String(row.reliability || ""), row.oversell,
-    String(row.value_score || ""),
+    String(row.value_score || ""), diskLabel(row) || "",
   ].join(" ").toLowerCase();
   return needle.split(/\s+/).every((part) => haystack.includes(part));
+}
+
+// Excel-style multi-level sort: apply rules in order, each with its own
+// direction; later rules only break ties.
+function compareRows(left, right) {
+  for (const rule of sortRules) {
+    const a = sortKey(left, rule.field);
+    const b = sortKey(right, rule.field);
+    let cmp;
+    if (typeof a === "number" && typeof b === "number") {
+      cmp = a - b;
+    } else {
+      cmp = String(a).localeCompare(String(b), "zh-CN");
+    }
+    if (cmp !== 0) return rule.dir === "asc" ? cmp : -cmp;
+  }
+  return 0;
 }
 
 function render() {
@@ -102,15 +210,7 @@ function render() {
     (!routeFilter.value || (row.provider_claimed_routes || []).includes(routeFilter.value)) &&
     (Number(row.reliability || 0) >= minReliability)
   );
-  visible.sort(sortOrder.value === "monthly"
-    ? (left, right) => numeric(left, "monthly_amount") - numeric(right, "monthly_amount")
-    : sortOrder.value === "amount"
-      ? (left, right) => numeric(left, "amount") - numeric(right, "amount")
-      : sortOrder.value === "value"
-        ? (left, right) => numeric(left, "value_score") - numeric(right, "value_score")
-        : sortOrder.value === "reliability"
-          ? (left, right) => numeric(left, "reliability") - numeric(right, "reliability")
-          : (left, right) => timestamp(right) - timestamp(left));
+  visible.sort(compareRows);
 
   visible.forEach((row) => {
     const tr = document.createElement("tr");
@@ -136,8 +236,13 @@ function render() {
     } else if (diag) {
       reasonEl.title = `浏览器诊断：${diag}`;
     }
-    tr.append(cell(row.provider), plan, cell(row.region), cell(row.outcome), cell(raw),
-      cell(monthly), cell(stars(row.value_score)), cell(stars(row.reliability)),
+    const cpu = specValue(row, "cpu");
+    const ram = specValue(row, "ram_gb");
+    const ramLabel = ram === null ? null : `${ram}GB`;
+    tr.append(cell(row.provider), plan, cell(row.region), cell(row.outcome),
+      cell(cpu === null ? null : `${cpu} 核`), cell(ramLabel), cell(diskLabel(row)),
+      routeCell(row.provider_claimed_routes),
+      cell(raw), cell(monthly), cell(stars(row.value_score)), cell(stars(row.reliability)),
       cell(oversellLabel(row.oversell)), cell(row.availability), reasonEl);
     bodyNode.append(tr);
 
@@ -285,7 +390,8 @@ function renderTrend(taskId) {
 }
 
 function exportCsvRows(rowsToExport) {
-  const header = ["provider", "plan_name", "region", "outcome", "amount", "currency",
+  const header = ["provider", "plan_name", "region", "outcome", "cpu", "ram_gb",
+    "storage_gb", "disk_type", "routes", "amount", "currency",
     "billing_period", "monthly_amount", "value_score", "reliability", "oversell",
     "availability", "rejection_reason"];
   const escape = (value) => {
@@ -294,7 +400,19 @@ function exportCsvRows(rowsToExport) {
   };
   const lines = [header.join(",")];
   rowsToExport.forEach((row) => {
-    lines.push(header.map((field) => escape(row[field])).join(","));
+    const cpu = specValue(row, "cpu");
+    const ram = specValue(row, "ram_gb");
+    const gb = specValue(row, "storage_gb");
+    const values = [
+      row.provider, row.plan_name, row.region, row.outcome,
+      cpu === null ? "" : cpu, ram === null ? "" : ram,
+      gb === null ? "" : gb, diskType(row) || "",
+      (row.provider_claimed_routes || []).join(" "),
+      row.amount, row.currency, row.billing_period, row.monthly_amount,
+      row.value_score, row.reliability, row.oversell,
+      row.availability, row.rejection_reason,
+    ];
+    lines.push(values.map(escape).join(","));
   });
   const blob = new Blob(["\uFEFF" + lines.join("\n")], {type: "text/csv;charset=utf-8"});
   const link = document.createElement("a");
@@ -302,6 +420,51 @@ function exportCsvRows(rowsToExport) {
   link.download = "vps-promotions.csv";
   link.click();
   URL.revokeObjectURL(link.href);
+}
+
+function renderSortRules() {
+  sortRulesNode.replaceChildren();
+  sortRules.forEach((rule, index) => {
+    const row = document.createElement("div");
+    row.className = "sort-rule";
+    const label = document.createElement("span");
+    label.textContent = `第${index + 1}关键字`;
+    const fieldSelect = document.createElement("select");
+    fieldSelect.className = "sort-field";
+    SORT_FIELDS.forEach(([value, labelText]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = labelText;
+      if (value === rule.field) option.selected = true;
+      fieldSelect.append(option);
+    });
+    fieldSelect.addEventListener("change", () => {
+      rule.field = fieldSelect.value;
+      render();
+    });
+    const dirButton = document.createElement("button");
+    dirButton.type = "button";
+    dirButton.className = "sort-dir";
+    dirButton.textContent = rule.dir === "asc" ? "↑ 升序" : "↓ 降序";
+    dirButton.addEventListener("click", () => {
+      rule.dir = rule.dir === "asc" ? "desc" : "asc";
+      renderSortRules();
+      render();
+    });
+    const removeButton = document.createElement("button");
+    removeButton.type = "button";
+    removeButton.className = "sort-remove";
+    removeButton.textContent = "×";
+    removeButton.title = "删除该关键字";
+    removeButton.addEventListener("click", () => {
+      sortRules.splice(index, 1);
+      if (sortRules.length === 0) sortRules = [{field: "updated", dir: "desc"}];
+      renderSortRules();
+      render();
+    });
+    row.append(label, fieldSelect, dirButton, removeButton);
+    sortRulesNode.append(row);
+  });
 }
 
 function renderDeals(deals) {
@@ -362,6 +525,7 @@ async function load() {
     addOptions(billingFilter, rows.map((row) => row.billing_period));
     addOptions(availabilityFilter, rows.map((row) => row.availability));
     addOptions(routeFilter, rows.flatMap((row) => row.provider_claimed_routes || []));
+    renderSortRules();
     render();
     loadDeals();
   } catch (_error) {
@@ -370,8 +534,19 @@ async function load() {
 }
 
 [searchBox, providerFilter, outcomeFilter, regionFilter, currencyFilter, billingFilter,
-  availabilityFilter, routeFilter, reliabilityFilter, sortOrder].forEach((node) =>
+  availabilityFilter, routeFilter, reliabilityFilter].forEach((node) =>
   node.addEventListener("input", render));
+sortAdd.addEventListener("click", () => {
+  if (sortRules.length >= 4) return;
+  sortRules.push({field: "updated", dir: "desc"});
+  renderSortRules();
+  render();  // re-sort immediately (Excel-style tiebreaker applies now)
+});
+sortClear.addEventListener("click", () => {
+  sortRules = [{field: "updated", dir: "desc"}];
+  renderSortRules();
+  render();
+});
 exportCsv.addEventListener("click", () => {
   const needle = searchBox.value.trim().toLowerCase();
   const rowsToExport = rows.filter((row) => matchSearch(row, needle));

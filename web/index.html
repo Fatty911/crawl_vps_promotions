@@ -25,22 +25,21 @@
       <option value="0">不限</option><option value="5">≥5</option><option value="6">≥6</option>
       <option value="7">≥7</option><option value="8">≥8</option><option value="9">≥9</option>
     </select></label>
-    <label>排序<select id="sort-order">
-      <option value="updated">更新时间</option>
-      <option value="value">性价比优先</option>
-      <option value="reliability">可靠性优先</option>
-      <option value="monthly">同币种月化</option>
-      <option value="amount">原始金额</option>
-    </select></label>
     <button id="export-csv" type="button">导出 CSV</button>
+  </section>
+  <section class="sort-panel" aria-label="多级排序（仿 Excel）">
+    <span class="sort-title">排序</span>
+    <div id="sort-rules"></div>
+    <button id="sort-add" type="button" title="增加关键字">+ 关键字</button>
+    <button id="sort-clear" type="button">清空</button>
   </section>
   <main>
     <div id="cards" class="cards"></div>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th>服务商</th><th>套餐</th><th>地区</th><th>状态</th><th>原价/周期</th>
-          <th>月化</th><th>性价比</th><th>可靠性</th><th>超售</th><th>库存</th><th>原因</th>
+          <th>服务商</th><th>套餐</th><th>地区</th><th>状态</th><th>CPU</th><th>内存</th><th>硬盘</th>
+          <th>线路</th><th>原价/周期</th><th>月化</th><th>性价比</th><th>可靠性</th><th>超售</th><th>库存</th><th>原因</th>
         </tr></thead>
         <tbody id="status-body"></tbody>
       </table>
