@@ -138,7 +138,8 @@ def verify_plan_tokens(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0"
     ),
     browser_timeout: int = 30000,
-) -> tuple[bool, list[str]]:
+    include_page: bool = False,
+) -> tuple[bool, list[str]] | tuple[bool, list[str], str]:
     """Re-fetch the target page and confirm every plan token is present.
 
     Strategy (each level mirrors the monitor's own fetch chain):
@@ -152,7 +153,7 @@ def verify_plan_tokens(
     """
     tokens = [str(t) for t in plan_tokens if str(t)]
     if not target_url or not tokens:
-        return False, list(tokens)
+        return (False, list(tokens), "") if include_page else (False, list(tokens))
 
     page: str | None = None
     try:
@@ -169,17 +170,18 @@ def verify_plan_tokens(
 
     missing = [t for t in tokens if t.casefold() not in (page or "")]
     if not missing:
-        return True, []
+        return (True, [], page or "") if include_page else (True, [])
 
     # Requests-level check was inconclusive (challenge page or JS-rendered
     # store). Fall back to a real browser render before declaring retired.
     rendered = _browser_render(target_url, timeout=browser_timeout)
     if rendered:
+        page = rendered
         missing = [t for t in tokens if t.casefold() not in rendered]
         if not missing:
-            return True, []
+            return (True, [], rendered) if include_page else (True, [])
 
     # If the requests fetch was a challenge page but the browser render also
     # failed to confirm, we cannot distinguish "retired" from "blocked":
     # report NOT confirmed (safe: never repair on unconfirmed evidence).
-    return False, missing
+    return (False, missing, page or "") if include_page else (False, missing)

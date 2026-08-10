@@ -173,6 +173,38 @@ def test_verify_browser_rotation_logic_present(monkeypatch):
     assert "_looks_like_challenge" in src
 
 
+def test_verify_include_page_returns_visible_text(monkeypatch):
+    """include_page=True returns the fetched page's visible text so the fix
+    agent can diagnose from the real page (observed 2026-08-10 run
+    31379078505: model wanted the actual BuyVM HTML)."""
+    import requests
+
+    from vps_monitor import verify as verify_mod
+
+    class R:
+        text = "<html><h2>SLICE <span>4096</span></h2><p>4096 MB Memory 80 GB SSD</p></html>"
+
+    monkeypatch.setattr(
+        requests, "get",
+        lambda url, timeout, headers, allow_redirects, proxies=None: R(),
+    )
+    ok, missing, page = verify_mod.verify_plan_tokens(
+        "https://buyvm.net/kvm-dedicated-server-slices#slice4096",
+        ["SLICE 4096", "4096 MB", "80 GB SSD"],
+        include_page=True,
+    )
+    assert ok is True
+    assert missing == []
+    assert "slice 4096" in page
+    assert "80 gb ssd" in page
+    # Default (include_page=False) keeps the 2-tuple contract.
+    ok2, missing2 = verify_mod.verify_plan_tokens(
+        "https://buyvm.net/kvm-dedicated-server-slices#slice4096",
+        ["SLICE 4096", "4096 MB", "80 GB SSD"],
+    )
+    assert ok2 is True and missing2 == []
+
+
 def test_verify_browser_fallback_reports_unconfirmed_when_both_fail(monkeypatch):
     """If requests gets a challenge page AND the browser render fails, the
     result must be NOT confirmed (safe: never repair on unconfirmed data)."""

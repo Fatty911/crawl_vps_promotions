@@ -168,9 +168,12 @@ def test_repair_fix_prompt_embeds_monitor_source():
     prompt = build_fix_prompt(
         {"task_id": "buyvm-slice4096", "plan_tokens": ["SLICE 4096"], "target_url": "https://buyvm.net/x"},
         "",
+        page_text="SLICE 4096 4096 MB Memory 80 GB SSD Storage",
     )
     assert "monitor.py 当前完整源码" in prompt
     assert "def _matches_target" in prompt
+    assert "实际页面可见文本" in prompt
+    assert "SLICE 4096 4096 MB" in prompt
     # The deny-tools prefix must not forbid reasoning over the embedded source.
     runner_src = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
     assert "Do not call tools or modify files" not in runner_src

@@ -118,7 +118,7 @@ def _monitor_source_excerpt(limit: int = 60000) -> str:
     return src[start:end]
 
 
-def build_fix_prompt(task: dict, log_excerpt: str) -> str:
+def build_fix_prompt(task: dict, log_excerpt: str, page_text: str = "") -> str:
     return f"""你是资深 VPS 优惠监控修复工程师。Fatty911/crawl_vps_promotions 仓库中任务解析失败。
 
 ## 失败任务（live-evidence）
@@ -129,6 +129,11 @@ def build_fix_prompt(task: dict, log_excerpt: str) -> str:
 ## 失败日志摘录
 ```text
 {log_excerpt[:8000]}
+```
+
+## 实际页面可见文本（verify 实时重抓，plan tokens 已确认存在）
+```text
+{page_text[:8000]}
 ```
 
 ## vps_monitor/monitor.py 当前完整源码（请基于它分析根因，禁止凭空构造行号）
@@ -489,13 +494,13 @@ def main() -> int:
     except ImportError as exc:
         print(f"[vps-repair] cannot import vps_monitor.verify: {exc}; skipping", file=sys.stderr)
         return 3
-    confirmed, missing = verify_plan_tokens(target_url, plan_tokens)
+    confirmed, missing, page_text = verify_plan_tokens(target_url, plan_tokens, include_page=True)
     if not confirmed:
         print(f"[vps-repair] plan tokens NOT confirmed on live page: {missing}; external_retired, skipping", file=sys.stderr)
         return 3
     print(f"[vps-repair] all plan tokens confirmed on live page ({len(plan_tokens)})")
 
-    fix_prompt = build_fix_prompt(task, args.log_excerpt)
+    fix_prompt = build_fix_prompt(task, args.log_excerpt, page_text=page_text)
     # glm-5.2 is a reasoning model: with max_tokens=4000 its reasoning
     # budget exhausts and the final text part comes back empty -> "fix agent
     # returned nothing" (observed 2026-08-10 run 31361365239). The review
