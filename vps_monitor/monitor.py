@@ -1193,7 +1193,7 @@ def _parse_period(text: str) -> str | None:
         return "quarterly"
     if any(word in lowered for word in ("annually", "annual", "yearly", "per year", "/year", "每年", "年付")):
         return "yearly"
-    if any(word in lowered for word in ("monthly", "per month", "/month", "/月", "每月", "月付")):
+    if any(word in lowered for word in ("monthly", "per month", "/month", "/ month", "/mo", "/月", "每月", "月付")):
         return "monthly"
     return None
 
@@ -1256,7 +1256,7 @@ def _has_enabled_order_control(card: Any) -> bool:
         label = f"{control.get_text(' ', strip=True)} {control.get('value', '')}".casefold()
         if (
             not control.has_attr("disabled")
-            and any(word in label for word in ("order", "buy", "订购", "购买", "purchase", "deploy"))
+            and any(word in label for word in ("order", "buy", "订购", "购买", "purchase", "deploy", "started"))
         ):
             return True
     return False
@@ -1265,7 +1265,7 @@ def _has_enabled_order_control(card: Any) -> bool:
 def _specific_order_url(card: Any, target: PlanTarget) -> str | None:
     for anchor in card.select("a[href]"):
         label = anchor.get_text(" ", strip=True).casefold()
-        if not any(word in label for word in ("order", "buy", "订购", "购买", "checkout", "purchase", "deploy")):
+        if not any(word in label for word in ("order", "buy", "订购", "购买", "checkout", "purchase", "deploy", "started")):
             continue
         candidate = urljoin(target.url, str(anchor.get("href", "")))
         if target_url_allowed(target, candidate) and _offer_id(target, candidate):
@@ -1418,10 +1418,41 @@ def parse_offer(markup: str, target: PlanTarget) -> ParseResult:
         ):
             return ParseResult("rejected", block_reason="currency_or_period_conflict")
         return json_result
+    # Contabo split-digit pricing (observed 2026-08-10): the struck-through
+    # <span class="previous-price">€5.50</span> must never become a live
+    # price, and the real price is split as
+    # <div class="pre-decimal-col">4</div><span class="decimal">40</span>
+    # + "/ month" — re-join the digits with the currency sign so the price
+    # regex sees "€4.40 / month". GLM review FAIL caught the old price
+    # leaking into live (AGENTS.md: no struck/placeholder prices as live).
+    prev_price_rows = visible_soup.select(".previous-price-row")
+    for wrapper in list(visible_soup.select(".price-wrapper")):
+        pre = wrapper.select_one(".pre-decimal-col")
+        dec = wrapper.select_one(".decimal")
+        if pre is None or dec is None:
+            continue
+        pre_text = pre.get_text(strip=True)
+        dec_text = dec.get_text(strip=True)
+        if not (pre_text.isdigit() and dec_text.isdigit()):
+            continue
+        currency = "$"
+        prev_row = wrapper.find_previous_sibling(class_="previous-price-row")
+        if prev_row is not None:
+            symbol = re.search(r"[$€£¥]", prev_row.get_text())
+            if symbol:
+                currency = symbol.group(0)
+        wrapper_text = wrapper.get_text(" ", strip=True)
+        wrapper.clear()
+        joined_span = soup.new_tag("span")
+        suffix = " / month" if "/ month" in wrapper_text else ""
+        joined_span.string = f"{currency}{pre_text}.{dec_text}{suffix}"
+        wrapper.append(joined_span)
+    for row in prev_price_rows:
+        row.decompose()
     # .plan is the BuyVM card class (div.plan.fourplan); without it the
     # card loop never matches (observed 2026-08-10: buyvm-slice4096/2048
     # reported no_exact_same_card_offer while the cards are on the page).
-    selectors = ".package-card, .product, .package, .plan-card, .product-card, .plan, .pricing, tr"
+    selectors = ".package-card, .product, .package, .plan-card, .product-card, .plan, .pricing, .ct-productbox, tr"
     for card in visible_soup.select(selectors):
         card_text = card.get_text(" ", strip=True)
         order_url = _specific_order_url(card, target)

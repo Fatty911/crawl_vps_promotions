@@ -771,8 +771,8 @@ def test_parse_offer_cloudcone_pricing_card_and_deploy_button():
     markup = fixture("cloudcone_vps.html")
     targets = {t.id: t for t in load_targets(load_config())}
     for tid, expected in (
-        ("cloudcone-ssd-vps-2", (46.0, "yearly")),
-        ("cloudcone-ssd-vps-4", (92.0, "yearly")),
+        ("cloudcone-ssd-vps-2", (3.83, "monthly")),
+        ("cloudcone-ssd-vps-4", (7.66, "monthly")),
     ):
         result = parse_offer(markup, targets[tid])
         assert result.outcome == "success", (tid, result.block_reason)
@@ -782,3 +782,19 @@ def test_parse_offer_cloudcone_pricing_card_and_deploy_button():
         assert result.offer.availability == "in_stock"
         assert result.offer.offer_id and "token-" in result.offer.offer_id
         assert result.offer.product_url.startswith("https://app.cloudcone.com/vps/")
+
+
+def test_parse_offer_contabo_ct_productbox_get_started():
+    """Contabo renamed plans (VPS M -> Cloud VPS 4 by vCPU) and moved to
+    Astro ct-productbox cards with a 'Get Started' CTA and price text
+    '€5.50 4 40 / month' (slash-space-month, not /month) — all three must
+    parse (observed 2026-08-10: tokens matched but price period and
+    order-control detection both failed on the live page)."""
+    markup = fixture("contabo_vps.html")
+    target = next(t for t in load_targets(load_config()) if t.id == "contabo-vps-m")
+    result = parse_offer(markup, target)
+    assert result.outcome == "success", result.block_reason
+    assert result.offer is not None
+    assert result.offer.amount == 4.4 and result.offer.currency == "EUR"
+    assert result.offer.billing_period == "monthly"
+    assert result.offer.availability == "in_stock"

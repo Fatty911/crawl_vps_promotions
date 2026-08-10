@@ -376,15 +376,15 @@ targets:
     expected_domains: [contabo.com]
     expected_currencies: [EUR, USD]
     provider: Contabo
-    plan_name: Cloud VPS M
-    plan_tokens: [VPS M, vCPU, RAM]
+    plan_name: Cloud VPS 4
+    plan_tokens: [Cloud VPS 4]
     url: https://contabo.com/en/vps/
     region: EU
     provider_claimed_routes: [BGP]
     reliability: 6
     oversell: high
     reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
-    specs: {cpu: 4, ram_gb: 8, storage_gb: 50, bandwidth_gbps: 0.5}
+    specs: {cpu: 4, ram_gb: 8, storage_gb: 100, bandwidth_gbps: 1}
   # ============ DMIT（新）============
   - id: dmit-lax-pro
     <<: *target_defaults
