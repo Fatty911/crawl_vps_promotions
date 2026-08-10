@@ -228,6 +228,7 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
         # --format json emits NDJSON; extract assistant text parts (the
         # default format pollutes stdout with ANSI/banner lines).
         parts: list[str] = []
+        event_types: dict[str, int] = {}
         for line in (completed.stdout or "").splitlines():
             line = line.strip()
             if not line:
@@ -236,11 +237,18 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
                 event = json.loads(line)
             except json.JSONDecodeError:
                 continue
+            event_types[event.get("type", "?")] = event_types.get(event.get("type", "?"), 0) + 1
             part = event.get("part") or {}
             if event.get("type") == "text" and part.get("type") == "text":
                 text_value = part.get("text")
                 if isinstance(text_value, str) and text_value.strip():
                     parts.append(text_value)
+        if not parts:
+            print(
+                f"[vps-repair] opencode exit 0 but no text parts; "
+                f"event types: {event_types}; stdout bytes: {len(completed.stdout or '')}",
+                file=sys.stderr,
+            )
         return "\n".join(parts).strip() or None
 
 

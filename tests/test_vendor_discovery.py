@@ -182,6 +182,11 @@ def test_repair_agent_uses_fast_ark_provider():
     # 4000-token limit and the text part comes back empty (observed
     # 2026-08-10 run 31361365239: "fix agent returned nothing").
     assert "max_tokens=16000" in src
+    # Diagnostic for empty extraction: event-type distribution must be logged
+    # so a silent "returned nothing" is debuggable (run 31362645513 still
+    # returned nothing after the 16000 fix).
+    assert "event types:" in src
+    assert "stdout bytes:" in src
     wf = (ROOT / ".github/workflows/vps-repair.yml").read_text(encoding="utf-8")
     assert "VOLCENGINE_CODING_PLAN_API_KEY" in wf
     assert "NVIDIA_NIM_API_KEY" in wf  # review still depends on NIM
