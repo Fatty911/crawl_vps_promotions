@@ -9,6 +9,7 @@
 - 保留现有 git author；禁止修改 `user.name`/`user.email`。只允许非 force `git push origin HEAD:main`，禁止 `--force`、`--no-verify` 和绕过评审/测试。
 - 提交前运行全套 pytest、compileall、YAML/schema/workflow/安全/XSS/敏感扫描与 `git diff --check`。提交后 hook 必须核对远端 SHA；CI、live workflow、TLS Pages manifest 和产品门未全部一致前不得宣称完成。
 - 两位最终审查者必须审查同一个 staged diff SHA-256。提交信息必须带 `Review-Model-Family-1/2`、两个 `Review-Result-1/2: PASS` 和匹配的 `Reviewed-Diff-SHA256` trailers；repo 内 gate 会在 push 前验证家族不同、2/2 PASS、diff 摘要和授权路径。
+- 评审输入必须遵循 `docs/review_process.md`：涉及 LLM 调用链/网络抓取/数据流/页面结构的变更，评审 prompt 必须附运行时证据（opencode 事件流、curl 页面片段、evidence 实际值）并执行跨文件一致性核对（monitor/verify/workflow 通道对齐、配置源 vs 运行时值）。静态 diff 评审无法发现动态类缺陷（2026-08-08~10 多轮实证：verify 直连、span 分隔、href-less 按钮、thinking 预算超限均因此漏过）。
 
 
 ## Git 提交作者身份规则（Fatty911 全局要求，2026-08-04）

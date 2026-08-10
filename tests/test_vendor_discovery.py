@@ -230,6 +230,24 @@ def test_parse_fix_response_extracts_prose_wrapped_json():
     assert "parse_fix_response failed" in runner_src
 
 
+def test_review_process_doc_and_agents_reference():
+    """The review process must be locked: docs/review_process.md exists with
+    the dynamic-evidence requirements, and AGENTS.md references it (so a
+    future regression cannot silently drop the evidence rules that catch
+    dynamic bugs — verified 2026-08-08~10: static review missed verify
+    direct-fetch, span-split needles, href-less order buttons and the
+    glm-5.2 thinking budget)."""
+    rp = (ROOT / "docs/review_process.md").read_text(encoding="utf-8")
+    assert "运行时证据" in rp
+    assert "跨文件一致性核对" in rp
+    assert "外部世界证据" in rp
+    assert "event types" in rp or "step_finish" in rp
+    assert "curl" in rp
+    agents = (ROOT / "AGENTS.md").read_text(encoding="utf-8")
+    assert "docs/review_process.md" in agents
+    assert "运行时证据" in agents
+
+
 def test_repair_agent_uses_fast_ark_provider():
     """The fix agent must use the fast Ark glm-5.2 endpoint (kimi k3 timed out
     at 600s on patch generation 2026-08-10 run 31357764038)."""
