@@ -133,7 +133,7 @@ def build_fix_prompt(task: dict, log_excerpt: str, page_text: str = "") -> str:
 
 ## 实际页面可见文本（verify 实时重抓，plan tokens 已确认存在）
 ```text
-{page_text[:8000]}
+{page_text[:1500]}
 ```
 
 ## vps_monitor/monitor.py 当前完整源码（请基于它分析根因，禁止凭空构造行号）
@@ -153,6 +153,10 @@ def build_fix_prompt(task: dict, log_excerpt: str, page_text: str = "") -> str:
 ## 输出格式（严格 JSON，不要 markdown 代码块）
 {{"patch": "<unified diff 文本>", "reasoning": "<简述>", "confidence": 0.0-1.0}}
 confidence < 0.7 时 patch 必须为空字符串。
+
+## 输出长度硬限制
+整个回答必须 ≤1500 tokens：reasoning 一句话（≤200 tokens），patch 只含最小
+diff。禁止长篇分析、禁止复述页面文本、禁止解释决策过程——直接给结果。
 """
 
 
