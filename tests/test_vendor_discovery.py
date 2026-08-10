@@ -179,6 +179,12 @@ def test_repair_fix_prompt_embeds_monitor_source():
     assert "def _matches_target" in prompt
     assert "实际页面可见文本" in prompt
     assert "SLICE 4096 4096 MB" in prompt
+    # providers.yaml task config (expected_domains etc.) must be embedded —
+    # the model asked for it to judge _specific_order_url domain checks
+    # (observed 2026-08-10 run 31388059937).
+    assert "任务配置" in prompt
+    assert "expected_domains" in prompt
+    assert "buyvm.net" in prompt
     # The deny-tools prefix must not forbid reasoning over the embedded source.
     runner_src = (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
     assert "Do not call tools or modify files" not in runner_src

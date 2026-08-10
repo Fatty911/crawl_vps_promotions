@@ -98,6 +98,32 @@ def patch_paths(patch: str) -> list[str]:
     return [p for p in paths if p]
 
 
+def _task_config_excerpt(task: dict) -> str:
+    """Pull the task's expected_domains/expected_currencies from providers.yaml
+    so the fix agent can judge _specific_order_url domain checks and currency
+    handling (the task dict from classification lacks these; the model asked
+    for them — observed 2026-08-10 run 31388059937)."""
+    try:
+        import yaml
+
+        config = yaml.safe_load((ROOT / "providers.yaml").read_text(encoding="utf-8"))
+    except Exception as exc:
+        return f"<providers.yaml unreadable: {exc}>"
+    task_id = str(task.get("task_id") or "")
+    for row in config.get("targets", []):
+        if isinstance(row, dict) and str(row.get("id") or "") == task_id:
+            return json.dumps(
+                {
+                    "expected_domains": row.get("expected_domains", []),
+                    "expected_currencies": row.get("expected_currencies", []),
+                    "expected_billing_periods": row.get("expected_billing_periods", []),
+                    "url": row.get("url", ""),
+                },
+                ensure_ascii=False,
+            )
+    return "<task not found in providers.yaml>"
+
+
 def _monitor_source_excerpt(limit: int = 60000) -> str:
     """Return the parsing-relevant portion of vps_monitor/monitor.py so the
     fix agent can build a precise patch without tool access.
@@ -129,6 +155,11 @@ def build_fix_prompt(task: dict, log_excerpt: str, page_text: str = "") -> str:
 ## 失败日志摘录
 ```text
 {log_excerpt[:8000]}
+```
+
+## 任务配置（providers.yaml，expected_domains 等）
+```json
+{_task_config_excerpt(task)}
 ```
 
 ## 实际页面可见文本（verify 实时重抓，plan tokens 已确认存在）
