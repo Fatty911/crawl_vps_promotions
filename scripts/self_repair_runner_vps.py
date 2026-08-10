@@ -209,7 +209,15 @@ def call_opencode(provider: dict, prompt: str, max_tokens: int = 4000) -> str | 
                     "baseURL": base_url,
                     "apiKey": f"{{env:{provider['env_key']}}}",
                 },
-                "models": {provider["model"]: {"limit": {"context": 131072, "output": max(1024, int(max_tokens))}}},
+                "models": {provider["model"]: {
+                    "limit": {"context": 131072, "output": max(1024, int(max_tokens))},
+                    # glm-5.2 deep-think burns the whole output budget as
+                    # reasoning (opencode counts it as output but emits no
+                    # text event) -> step_finish reason=length, no answer
+                    # (observed runs 31377327449..31382697099). Disable
+                    # thinking so the model answers directly.
+                    "options": {"thinking": {"type": "disabled"}},
+                }},
             }
         },
         "agent": {"plan": {"permission": read_only}},

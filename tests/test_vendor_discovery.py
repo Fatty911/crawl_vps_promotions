@@ -210,6 +210,11 @@ def test_parse_fix_response_extracts_prose_wrapped_json():
     # only burn output budget (run 31377327449: output=16000, reason=length,
     # no text part because plan-agent tool attempts were discarded).
     assert '"read": "deny"' in runner_src
+    # glm-5.2 deep-think burned the whole output budget as reasoning with no
+    # text event (step_finish reason=length; runs 31377327449..31382697099).
+    # Thinking must be disabled so the model answers directly (verified
+    # locally 2026-08-10: output dropped to 8 tokens, text emitted).
+    assert '"thinking": {"type": "disabled"}' in runner_src
     # Parse failures must print the raw text for diagnosis.
     assert "parse_fix_response failed" in runner_src
 
