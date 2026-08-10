@@ -133,7 +133,7 @@ def build_fix_prompt(task: dict, log_excerpt: str, page_text: str = "") -> str:
 
 ## 实际页面可见文本（verify 实时重抓，plan tokens 已确认存在）
 ```text
-{page_text[:1500]}
+{page_text[:8000]}
 ```
 
 ## vps_monitor/monitor.py 当前完整源码（请基于它分析根因，禁止凭空构造行号）

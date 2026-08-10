@@ -165,6 +165,11 @@ def test_repair_fix_prompt_embeds_monitor_source():
     # 16000-token output budget (step_finish reason=length, no text part;
     # observed 2026-08-10 run 31374243994).
     assert len(src) < 30000
+    # Page text restored to 8000 chars: thinking-disabled glm-5.2 no longer
+    # burns output on reasoning, and the model needs the full price/period
+    # context to raise confidence (it complained the 1500-char excerpt was
+    # truncated before prices; run 31384060650).
+    assert "page_text[:8000]" in (ROOT / "scripts/self_repair_runner_vps.py").read_text(encoding="utf-8")
     prompt = build_fix_prompt(
         {"task_id": "buyvm-slice4096", "plan_tokens": ["SLICE 4096"], "target_url": "https://buyvm.net/x"},
         "",
