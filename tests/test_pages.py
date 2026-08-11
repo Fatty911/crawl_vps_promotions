@@ -102,3 +102,21 @@ def test_opt_ram_default_filter():
     assert "(routeFilter.value || !optRamFilter.checked ||" in script
     assert "hasFastRoute(row.provider_claimed_routes)" in script
     assert 'Number(specValue(row, "ram_gb")) >= 4' in script
+
+
+def test_opt_price_default_filter_and_cny_format():
+    """2026-08-11 用户要求：默认隐藏月化 >¥200 的套餐；月化金额格式统一为
+    ¥xx.xx（含 CNY 本币）；浮动横向滚动条 hover 表格时浮现。"""
+    index = (WEB / "index.html").read_text(encoding="utf-8")
+    script = (WEB / "app.js").read_text(encoding="utf-8")
+    css = (WEB / "styles.css").read_text(encoding="utf-8")
+    assert 'id="opt-price" type="checkbox" checked' in index
+    assert "隐藏月化>¥200" in index
+    assert "CNY: 1" in script
+    assert "function monthlyCnyValue" in script
+    assert "v <= 200" in script
+    assert 'return `¥${value.toFixed(2)}`' in script
+    assert "function initHScroll" in script
+    assert 'addEventListener("mouseenter"' in script
+    assert ".hscroll-float" in css
+    assert "position: fixed" in css

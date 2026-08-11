@@ -9,12 +9,20 @@ const outcomeFilter = document.getElementById("outcome-filter");
 const regionFilter = document.getElementById("region-filter");
 const currencyFilter = document.getElementById("currency-filter");
 // 月化价格统一 CNY 展示的参考汇率（2026-08-11 快照，中间价近似值；
-// 仅用于展示换算，不改原始金额）
-const CNY_RATES = { USD: 7.25, EUR: 7.9 };
+// 仅用于展示换算，不改原始金额；CNY 本身按 1:1 统一格式）
+const CNY_RATES = { USD: 7.25, EUR: 7.9, CNY: 1 };
+
+// 月化金额换算为 CNY 数值（无价格返回 null；未知货币按原值保守处理）
+function monthlyCnyValue(row) {
+  if (row.monthly_amount === null || row.monthly_amount === undefined) return null;
+  const rate = CNY_RATES[row.currency];
+  return rate === undefined ? row.monthly_amount : row.monthly_amount * rate;
+}
 const billingFilter = document.getElementById("billing-filter");
 const availabilityFilter = document.getElementById("availability-filter");
 const routeFilter = document.getElementById("route-filter");
 const optRamFilter = document.getElementById("opt-ram");
+const optPriceFilter = document.getElementById("opt-price");
 const reliabilityFilter = document.getElementById("reliability-filter");
 const exportCsv = document.getElementById("export-csv");
 const sortRulesNode = document.getElementById("sort-rules");
@@ -227,6 +235,10 @@ function render() {
     (routeFilter.value || !optRamFilter.checked ||
       hasFastRoute(row.provider_claimed_routes) ||
       Number(specValue(row, "ram_gb")) >= 4) &&
+    // 默认筛选（2026-08-11 用户要求）：默认隐藏月化 >¥200 的套餐；
+    // 手动选择线路后约束自动失效（用户意图优先），也可取消勾选。
+    (routeFilter.value || !optPriceFilter.checked ||
+      (() => { const v = monthlyCnyValue(row); return v === null || v <= 200; })()) &&
     (Number(row.reliability || 0) >= minReliability)
   );
   visible.sort(compareRows);
@@ -244,13 +256,11 @@ function render() {
       plan.replaceChildren(link);
     }
     const raw = row.amount === null ? null : `${row.amount} ${row.currency} / ${row.billing_period}`;
-    // 月化价格统一按 CNY 展示（参考汇率，2026-08-11 快照；EUR/USD 为
-    // 页面等值价时金额数值一致，汇率取当月中间价近似值）
+    // 月化价格统一按 CNY 展示（2026-08-11 用户要求：格式统一为 ¥xx.xx）
     const monthlyCny = (() => {
-      if (row.monthly_amount === null) return null;
-      const rate = CNY_RATES[row.currency];
-      if (rate === undefined) return `${row.monthly_amount} ${row.currency}`;
-      return `¥${(row.monthly_amount * rate).toFixed(2)}`;
+      const value = monthlyCnyValue(row);
+      if (value === null) return null;
+      return `¥${value.toFixed(2)}`;
     })();
     const monthly = monthlyCny;
     const reason = row.rejection_reason || row.block_reason || "";
@@ -554,6 +564,7 @@ async function load() {
     addOptions(routeFilter, rows.flatMap((row) => row.provider_claimed_routes || []));
     renderSortRules();
     render();
+    initHScroll();
     loadDeals();
   } catch (_error) {
     setState("structure-blocked", "structure-blocked：公开数据加载或校验失败");
@@ -564,6 +575,53 @@ async function load() {
   availabilityFilter, routeFilter, reliabilityFilter].forEach((node) =>
   node.addEventListener("input", render));
 optRamFilter.addEventListener("change", render);
+optPriceFilter.addEventListener("change", render);
+
+// 浮动横向滚动条（2026-08-11 用户要求）：横向滚动条原生位于表格容器
+// 底部，表格很长时必须竖向滚到底才能看到。改为鼠标进入表格范围时，
+// 在视口底部浮现一个浮动横向滚动条（fixed），与容器 scrollLeft 双向
+// 同步，可拖动；离开表格范围后隐藏。
+function initHScroll() {
+  const wrap = document.querySelector(".table-wrap");
+  if (!wrap || wrap.dataset.hscroll) return;
+  wrap.dataset.hscroll = "1";
+  const bar = document.createElement("div");
+  bar.className = "hscroll-float";
+  const track = document.createElement("div");
+  track.className = "hscroll-track";
+  const thumb = document.createElement("div");
+  thumb.className = "hscroll-thumb";
+  track.append(thumb);
+  bar.append(track);
+  document.body.append(bar);
+  const maxScroll = () => wrap.scrollWidth - wrap.clientWidth;
+  function sync() {
+    if (maxScroll() <= 0) { bar.style.display = "none"; return; }
+    const maxThumb = track.clientWidth - thumb.offsetWidth;
+    const pct = maxScroll() > 0 ? wrap.scrollLeft / maxScroll() : 0;
+    thumb.style.left = `${Math.max(0, Math.min(1, pct)) * maxThumb}px`;
+  }
+  wrap.addEventListener("mouseenter", () => { sync(); bar.style.display = "block"; });
+  wrap.addEventListener("mousemove", sync);
+  wrap.addEventListener("mouseleave", () => { bar.style.display = "none"; });
+  wrap.addEventListener("scroll", sync);
+  let drag = null;
+  thumb.addEventListener("mousedown", (e) => {
+    drag = { startX: e.clientX, startLeft: wrap.scrollLeft };
+    bar.classList.add("dragging");
+    e.preventDefault();
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!drag) return;
+    const maxThumb = track.clientWidth - thumb.offsetWidth;
+    const ratio = maxThumb > 0 ? (e.clientX - drag.startX) / maxThumb : 0;
+    wrap.scrollLeft = drag.startLeft + ratio * maxScroll();
+    sync();
+  });
+  window.addEventListener("mouseup", () => {
+    if (drag) { drag = null; bar.classList.remove("dragging"); }
+  });
+}
 sortAdd.addEventListener("click", () => {
   if (sortRules.length >= 4) return;
   sortRules.push({field: "updated", dir: "desc"});
