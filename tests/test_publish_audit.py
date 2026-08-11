@@ -306,7 +306,8 @@ def test_pages_deploy_frontend_only_workflow():
     assert "name: pages-deploy (frontend-only)" in text
     assert "paths:" in text and "web/**" in text
     assert "concurrency:" in text and "group: pages-deploy" in text
-    assert "gh run download" in text
+    assert "actions/github-script@v8" in text
+    assert "actions/download-artifact@v5" in text
     assert "pages-payload-" in text
     assert "cp -r web/* site/web/" in text
     assert "actions/upload-pages-artifact@v4" in text
