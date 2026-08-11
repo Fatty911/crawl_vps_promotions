@@ -153,7 +153,7 @@ jobs:
           name: pages-payload-${{ github.run_id }}-${{ github.run_attempt }}-${{ env.SOURCE_SHA }}
           path: expected-site
       - name: Verify deployed TLS manifest and files
-        run: python scripts/post_deploy_verify.py --base-url "${{ needs.deploy.outputs.page_url }}" --expected expected-site/manifest.json
+        run: python scripts/post_deploy_verify.py --base-url "${{ needs.deploy.outputs.page_url }}" --expected expected-site/manifest.json --expected-prices scripts/expected_prices.json
 
   product_gate:
     needs: post_verify

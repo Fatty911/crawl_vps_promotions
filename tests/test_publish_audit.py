@@ -220,3 +220,41 @@ def test_live_evidence_hash_is_bound_to_published_file_and_rejects_tampering(tmp
     )
     assert not structure_gate(tmp_path, [target.id for target in targets])
     assert not quality_gate(tmp_path)
+
+
+def test_verify_prices_data_semantic_gate(monkeypatch):
+    """post_deploy_verify.verify_prices: live prices.json must contain every
+    expected task with matching amount/period/availability. Currency may be
+    EUR or USD (Contabo serves equivalent prices per visitor locale — the
+    2026-08-11 user rule: deployment counts as success only when deployed
+    data matches reality; promo changes intentionally FAIL the gate)."""
+    from scripts.post_deploy_verify import verify_prices
+
+    live = [
+        {"task_id": "contabo-vps-m", "amount": 4.4, "currency": "USD",
+         "billing_period": "monthly", "availability": "in_stock"},
+        {"task_id": "contabo-plus-18", "amount": 79.2, "currency": "EUR",
+         "billing_period": "monthly", "availability": "in_stock"},
+    ]
+    monkeypatch.setattr("scripts.post_deploy_verify._get", lambda url: json.dumps(live).encode())
+
+    ok = {
+        "contabo-vps-m": {"amount": 4.4, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+        "contabo-plus-18": {"amount": 79.2, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+    }
+    verify_prices("https://example.test/", ok)  # must not raise
+
+    # 促销结束 → 金额变化 → 必须 FAIL（特性：提醒人工刷新快照）
+    stale = {**ok, "contabo-vps-m": {"amount": 5.5, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"}}
+    try:
+        verify_prices("https://example.test/", stale)
+        raise AssertionError("stale snapshot must fail")
+    except ValueError as exc:
+        assert "contabo-vps-m:amount=4.4!= 5.5" in str(exc)
+
+    # 任务缺失 → FAIL
+    try:
+        verify_prices("https://example.test/", {"ghost-task": ok["contabo-vps-m"]})
+        raise AssertionError("missing task must fail")
+    except ValueError as exc:
+        assert "missing tasks" in str(exc)

@@ -47,17 +47,58 @@ def verify(base_url: str, expected: dict) -> None:
             raise ValueError(f"public file hash mismatch: {name}")
 
 
+def verify_prices(base_url: str, expected_prices: dict) -> None:
+    """Data-semantic gate: the live prices.json must contain every expected
+    task with matching amount/period/availability (currency may be EUR or USD
+    — Contabo serves equivalent prices per visitor locale, same numbers).
+
+    Snapshot values come from scripts/expected_prices.json; when a promo
+    ends the amount changes and this gate fails on purpose, forcing a human
+    to refresh the snapshot (2026-08-11 user rule: deployment only counts as
+    success once the deployed data matches reality)."""
+    payload = json.loads(_get(urljoin(base_url.rstrip("/") + "/", "data/prices.json")))
+    by_task = {str(row.get("task_id") or row.get("id") or ""): row for row in payload if isinstance(row, dict)}
+    expected_tasks = {tid: spec for tid, spec in expected_prices.items() if not tid.startswith("_")}
+    missing = [tid for tid in expected_tasks if tid not in by_task]
+    if missing:
+        raise ValueError(f"expected prices missing tasks: {','.join(sorted(missing))}")
+    mismatches = []
+    for tid, expected in expected_tasks.items():
+        row = by_task[tid]
+        amount = row.get("amount")
+        if amount is None or abs(float(amount) - float(expected["amount"])) > 0.01:
+            mismatches.append(f"{tid}:amount={amount}!= {expected['amount']}")
+        currency = row.get("currency")
+        if currency not in expected["currency"]:
+            mismatches.append(f"{tid}:currency={currency}")
+        if row.get("billing_period") != expected["billing_period"]:
+            mismatches.append(f"{tid}:period={row.get('billing_period')}")
+        if row.get("availability") != expected["availability"]:
+            mismatches.append(f"{tid}:avail={row.get('availability')}")
+    if mismatches:
+        raise ValueError("live prices mismatch: " + "; ".join(mismatches))
+    print(f"PRICES_VERIFIED tasks={len(expected_prices)}")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--expected", required=True)
+    parser.add_argument("--expected-prices", default="")
     parser.add_argument("--attempts", type=int, default=6)
     args = parser.parse_args()
     expected = json.loads(Path(args.expected).read_text(encoding="utf-8"))
+    expected_prices = (
+        json.loads(Path(args.expected_prices).read_text(encoding="utf-8"))
+        if args.expected_prices
+        else None
+    )
     error: Exception | None = None
     for attempt in range(args.attempts):
         try:
             verify(args.base_url, expected)
+            if expected_prices is not None:
+                verify_prices(args.base_url, expected_prices)
             print(f"POST_DEPLOY_VERIFIED batch={expected['batch_id']} source_sha={expected['source_sha']}")
             return 0
         except (OSError, ValueError, json.JSONDecodeError) as exc:

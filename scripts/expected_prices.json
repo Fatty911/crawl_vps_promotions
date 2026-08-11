@@ -1,0 +1,15 @@
+{
+  "_comment": "部署后数据语义快照（post_deploy_verify.py --expected-prices 使用）。金额=页面真实活动价（含划线旧价剔除）；currency 允许 EUR/USD 等值（Contabo 按访客地区返回等值币种，数值一致）；促销期结束价格变化会使部署 FAIL——这是特性不是 bug，需人工更新本快照。快照日期：2026-08-11（用户要求：部署完 Pages 让 action 探测 JS/真实数据符合预期才算成功）。",
+  "contabo-vps-m":       {"amount": 4.4,  "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-vps-6":       {"amount": 6.0,  "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-vps-8":       {"amount": 11.2, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-vps-12":      {"amount": 20.0, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-vps-16":      {"amount": 29.6, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-vps-18":      {"amount": 39.2, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-plus-4":      {"amount": 10.8, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-plus-6":      {"amount": 15.2, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-plus-8":      {"amount": 28.0, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-plus-12":     {"amount": 47.2, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-plus-16":     {"amount": 63.2, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"},
+  "contabo-plus-18":     {"amount": 79.2, "currency": ["EUR", "USD"], "billing_period": "monthly", "availability": "in_stock"}
+}
