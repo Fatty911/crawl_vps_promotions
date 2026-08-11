@@ -1204,6 +1204,7 @@ def _parse_availability(text: str) -> str | None:
         "outofstock" in lowered
         or "out of stock" in lowered
         or "sold out" in lowered
+        or "停运" in text
         or re.search(r"\b0\s+(?:available|in stock)", lowered)
         or "售罄" in text
         or "缺货" in text
@@ -1228,7 +1229,9 @@ def _offer_from_text(
     if not _matches_target(text, target):
         return None
     price_period = _parse_bound_price_period(text)
-    availability = _parse_availability(text) or ("in_stock" if control_available else None)
+    availability = _parse_availability(text) or (
+        "in_stock" if control_available or price_period is not None else None
+    )
     offer_id = _offer_id(target, product_url or "")
     if price_period is None or availability is None or not product_url or not offer_id:
         return None
@@ -1252,6 +1255,15 @@ def _offer_from_text(
 
 
 def _has_enabled_order_control(card: Any) -> bool:
+    # WHMCS rows where the card itself (or any child link) is an add-to-cart
+    # link count as an enabled order control even without a button label
+    # (CloudIPLC .pt__row href="cart.php?a=add&pid=17", 2026-08-11).
+    anchors = card.select("a[href]")
+    if card.name == "a" and card.get("href"):
+        anchors = [card, *anchors]
+    for anchor in anchors:
+        if re.search(r"a=add(?:&|$)", str(anchor.get("href", "")), re.I):
+            return True
     for control in card.select("button, input[type='button'], input[type='submit'], a[href]"):
         label = f"{control.get_text(' ', strip=True)} {control.get('value', '')}".casefold()
         if (
@@ -1263,11 +1275,38 @@ def _has_enabled_order_control(card: Any) -> bool:
 
 
 def _specific_order_url(card: Any, target: PlanTarget) -> str | None:
-    for anchor in card.select("a[href]"):
+    anchors = card.select("a[href]")
+    if card.name == "a" and card.get("href"):
+        # The card itself is the order link (WHMCS .pt__row rows are
+        # <a class="pt__row" href="cart.php?a=add&pid=17">product</a>,
+        # CloudIPLC observed 2026-08-11).
+        anchors = [card, *anchors]
+    for anchor in anchors:
         label = anchor.get_text(" ", strip=True).casefold()
+        href = str(anchor.get("href", ""))
+        # WHMCS product rows are often the order link itself (no button
+        # label): <a class="pt__row" href="cart.php?a=add&pid=17">product</a>
+        # (CloudIPLC observed 2026-08-11). Recognize the WHMCS add-to-cart
+        # URL pattern even when the anchor text is just the plan name.
+        if re.search(r"a=add(?:&|$)", href, re.I):
+            candidate = urljoin(target.url, href)
+            if target_url_allowed(target, candidate) and _offer_id(target, candidate):
+                return candidate
         if not any(word in label for word in ("order", "buy", "订购", "购买", "checkout", "purchase", "deploy", "started", "configure")):
             continue
-        candidate = urljoin(target.url, str(anchor.get("href", "")))
+        candidate = urljoin(target.url, href)
+        if target_url_allowed(target, candidate) and _offer_id(target, candidate):
+            return candidate
+    # WHMCS-style order buttons are <input type="button" value="Order Now"
+    # onclick="window.location='cart.php?a=add&pid=134'"> with NO href
+    # (BandwagonHost observed 2026-08-11). Extract the JS-target URL so the
+    # offer carries a real per-plan order link with a pid offer id.
+    for control in card.select("input[onclick]"):
+        script = str(control.get("onclick", ""))
+        matched = re.search(r"window\.location\s*=\s*['\"]([^'\"]+)['\"]", script, re.I)
+        if not matched:
+            continue
+        candidate = urljoin(target.url, matched.group(1))
         if target_url_allowed(target, candidate) and _offer_id(target, candidate):
             return candidate
     # BuyVM-style order buttons are <a data-plan="4096" class="orderbutton">
@@ -1452,7 +1491,7 @@ def parse_offer(markup: str, target: PlanTarget) -> ParseResult:
     # .plan is the BuyVM card class (div.plan.fourplan); without it the
     # card loop never matches (observed 2026-08-10: buyvm-slice4096/2048
     # reported no_exact_same_card_offer while the cards are on the page).
-    selectors = ".package-card, .product, .package, .plan-card, .product-card, .plan, .pricing, .ct-productbox, tr"
+    selectors = ".package-card, .product, .package, .plan-card, .product-card, .plan, .pricing, .ct-productbox, .pt__row, .data-table-row, tr"
     for card in visible_soup.select(selectors):
         card_text = card.get_text(" ", strip=True)
         order_url = _specific_order_url(card, target)

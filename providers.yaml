@@ -90,7 +90,7 @@ targets:
     provider: BandwagonHost
     plan_name: SPECIAL 40G KVM PROMO V5 - OSAKA CN2 GIA VPS
     plan_tokens: [SPECIAL 40G KVM PROMO V5, OSAKA CN2 GIA VPS, 40 GB]
-    url: https://bandwagonhost.com/cart.php?productFilter=2
+    url: https://bandwagonhost.com/cart.php#osaka-cn2
     region: JP
     provider_claimed_routes: [CN2 GIA, China Unicom, China Mobile]
     reliability: 8
@@ -103,14 +103,14 @@ targets:
     expected_domains: [bandwagonhost.com]
     expected_currencies: [USD]
     provider: BandwagonHost
-    plan_name: CN2 GIA-E 10G KVM PROMO
-    plan_tokens: [CN2 GIA-E, 10G KVM PROMO, 10 GB]
-    url: https://bandwagonhost.com/cart.php?productFilter=1
+    plan_name: SPECIAL 20G KVM PROMO V5 - CN2 GIA ECOMMERCE VPS
+    plan_tokens: [SPECIAL 20G KVM PROMO V5, CN2 GIA ECOMMERCE, 20 GB]
+    url: https://bandwagonhost.com/cart.php#cn2-gia
     region: US
     provider_claimed_routes: [CN2 GIA-E]
     reliability: 8
     oversell: none
-    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.5}
+    specs: {cpu: 2, ram_gb: 1, storage_gb: 20, bandwidth_gbps: 1}
   # ============ Jtti ============
   - id: jtti-us-cn2
     <<: *target_defaults
@@ -300,29 +300,29 @@ targets:
     expected_domains: [cloudiplc.com]
     expected_currencies: [CNY, USD]
     provider: CloudIPLC
-    plan_name: 泉州 CN2 特价
-    plan_tokens: [泉州, CN2]
-    url: https://www.cloudiplc.com/cart.php?gid=1
+    plan_name: CN-QZ CN2 KVM Plus
+    plan_tokens: [CN-QZ CN2 KVM Plus]
+    url: https://www.cloudiplc.com/cart.php?gid=3
     region: CN
     provider_claimed_routes: [CN2]
     reliability: 8
     oversell: low
     reliability_note: 泉州 CN2 老牌，社区口碑好，线路稳定
-    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.5}
+    specs: {cpu: 2, ram_gb: 2, storage_gb: 40, bandwidth_gbps: 0.2}
   - id: cloudiplc-la-cn2
     <<: *target_defaults
     priority: 155
     expected_domains: [cloudiplc.com]
     expected_currencies: [CNY, USD]
     provider: CloudIPLC
-    plan_name: 洛杉矶 CN2 特价
-    plan_tokens: [洛杉矶, CN2]
-    url: https://www.cloudiplc.com/cart.php?gid=2
+    plan_name: USA-laxA KVM 512M
+    plan_tokens: [USA-laxA KVM, 512M]
+    url: https://www.cloudiplc.com/cart.php?gid=1#laxa
     region: US
     provider_claimed_routes: [CN2]
     reliability: 8
     oversell: low
-    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.5}
+    specs: {cpu: 1, ram_gb: 0.5, storage_gb: 10, bandwidth_gbps: 0.1}
   # ============ V.PS（新）============
   - id: vps-hk-cn2-gia
     <<: *target_defaults
@@ -360,15 +360,15 @@ targets:
     expected_domains: [hosthatch.com, cloud.hosthatch.com]
     expected_currencies: [USD]
     provider: HostHatch
-    plan_name: Los Angeles NVMe
-    plan_tokens: [Los Angeles, NVMe]
+    plan_name: NVMe 2 GB
+    plan_tokens: [NVMe 2 GB]
     url: https://hosthatch.com/ssd-vps
     region: US
     provider_claimed_routes: [BGP]
     reliability: 6
     oversell: medium
-    reliability_note: 性价比高，社区口碑中等，促销少
-    specs: {cpu: 1, ram_gb: 2, storage_gb: 40, bandwidth_gbps: 1}
+    reliability_note: 性价比高，社区口碑中等，促销少；页面套餐按内存档位命名，不按地区
+    specs: {cpu: 1, ram_gb: 2, storage_gb: 10, bandwidth_gbps: 1}
   # ============ DMIT（新）============
   - id: dmit-lax-pro
     <<: *target_defaults

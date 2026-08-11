@@ -854,3 +854,66 @@ def test_parse_offer_contabo_full_matrix():
         assert result.offer.currency == "EUR"
         assert result.offer.billing_period == "monthly"
         assert result.offer.availability == "in_stock"
+
+
+def test_bandwagon_whmcs_onclick_order_button():
+    """BandwagonHost (2026-08-11): product table rows use WHMCS
+    <input type="button" onclick="window.location='cart.php?a=add&pid=87'">
+    order buttons with NO href. _specific_order_url must extract the JS-target
+    URL so the offer carries a real per-plan order link (pid offer id).
+    Also covers: full cart page (no productFilter) has all plans in <tr>
+    rows; 10G CN2 GIA plan was renamed to SPECIAL 20G KVM PROMO V5."""
+    from vps_monitor.monitor import load_config, load_targets, parse_offer
+    body = (Path(__file__).parent / "fixtures" / "bandwagon_cart.html").read_text(encoding="utf-8")
+    targets = {t.id: t for t in load_targets(load_config())}
+
+    res = parse_offer(body, targets["bandwagon-cn2-gia-10g"])
+    assert res.outcome == "success", res.block_reason
+    assert res.offer.amount == 49.99 and res.offer.currency == "USD"
+    assert res.offer.billing_period == "quarterly"
+    assert res.offer.product_url == "https://bandwagonhost.com/cart.php?a=add&pid=87"
+
+    res = parse_offer(body, targets["bandwagon-osaka-40g"])
+    assert res.outcome == "success", res.block_reason
+    assert res.offer.amount == 49.99 and res.offer.currency == "USD"
+    assert res.offer.billing_period == "monthly"
+    assert res.offer.product_url == "https://bandwagonhost.com/cart.php?a=add&pid=134"
+
+
+def test_cloudiplc_pt_row_whmcs_row_link():
+    """CloudIPLC (2026-08-11): WHMCS custom theme uses column cards
+    (.pt__cell) grouped in <a class="pt__row"> rows where the row link IS
+    the add-to-cart link (cart.php?a=add&pid=17, no button label).
+    Requires: .pt__row in card selectors, self-anchor handling in
+    _specific_order_url/_has_enabled_order_control, a=add URL recognition.
+    Also: [停运] (discontinued) markers must parse as out_of_stock."""
+    from vps_monitor.monitor import load_config, load_targets, parse_offer
+    base = Path(__file__).parent / "fixtures"
+    targets = {t.id: t for t in load_targets(load_config())}
+
+    qz = (base / "cloudiplc_qz.html").read_text(encoding="utf-8")
+    res = parse_offer(qz, targets["cloudiplc-quanzhou-cn2"])
+    assert res.outcome == "success", res.block_reason
+    assert res.offer.amount == 1083.33 and res.offer.currency == "CNY"
+    assert res.offer.billing_period == "monthly"
+    assert res.offer.product_url == "https://www.cloudiplc.com/cart.php?a=add&pid=17"
+
+    la = (base / "cloudiplc_la.html").read_text(encoding="utf-8")
+    res = parse_offer(la, targets["cloudiplc-la-cn2"])
+    assert res.outcome == "out_of_stock", (res.outcome, res.block_reason)
+
+
+def test_hosthatch_spa_data_table_row():
+    """HostHatch (2026-08-11): SPA page renders plan rows as
+    <div class="data-table-row"> with <strong>NVMe 2 GB</strong> and
+    "from $4.00 / month" (no per-region naming, no order links on page —
+    order URL falls back to the page URL, offer id from path segment).
+    Regression: 2 GB plan must parse at $4.00 monthly in_stock."""
+    from vps_monitor.monitor import load_config, load_targets, parse_offer
+    body = (Path(__file__).parent / "fixtures" / "hosthatch_ssd_vps.html").read_text(encoding="utf-8")
+    targets = {t.id: t for t in load_targets(load_config())}
+    res = parse_offer(body, targets["hosthatch-la-nvme"])
+    assert res.outcome == "success", res.block_reason
+    assert res.offer.amount == 4.0 and res.offer.currency == "USD"
+    assert res.offer.billing_period == "monthly"
+    assert res.offer.product_url == "https://hosthatch.com/ssd-vps"
