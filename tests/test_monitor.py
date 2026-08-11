@@ -89,7 +89,8 @@ def test_offer_outside_configured_currency_expectation_is_rejected():
     [
         ("ZoroCloud", "zorocloud.html", 14.99, "USD", "monthly", "in_stock"),
         ("HostDare", "hostdare.html", 216.89, "USD", "yearly", "in_stock"),
-        ("BandwagonHost", "bandwagonhost.html", 49.99, "USD", "monthly", "in_stock"),
+        # BandwagonHost：多周期解析（2026-08-11），主价=月化最低周期（年付）
+        ("BandwagonHost", "bandwagonhost.html", 499.99, "USD", "yearly", "in_stock"),
         ("Jtti", "jtti.html", 17.63, "USD", "monthly", "in_stock"),
         ("CloudCone", "cloudcone.html", 79.99, "USD", "yearly", "in_stock"),
         ("BuyVM", "buyvm.html", 15.0, "USD", "monthly", "in_stock"),
@@ -869,14 +870,30 @@ def test_bandwagon_whmcs_onclick_order_button():
 
     res = parse_offer(body, targets["bandwagon-cn2-gia-10g"])
     assert res.outcome == "success", res.block_reason
-    assert res.offer.amount == 49.99 and res.offer.currency == "USD"
-    assert res.offer.billing_period == "quarterly"
+    # 多周期解析（2026-08-11）：主价 = 月化最低的支付周期（年付 $169.99/12
+    # = $14.17/月 < 季付 $16.66/月），price_points 保留全部周期月化单价
+    assert res.offer.amount == 169.99 and res.offer.currency == "USD"
+    assert res.offer.billing_period == "yearly"
+    assert res.offer.monthly_amount == 14.17
+    assert res.offer.price_points == (
+        ("yearly", 14.17),
+        ("semiannual", 15.0),
+        ("quarterly", 16.66),
+    )
     assert res.offer.product_url == "https://bandwagonhost.com/cart.php?a=add&pid=87"
 
     res = parse_offer(body, targets["bandwagon-osaka-40g"])
     assert res.outcome == "success", res.block_reason
-    assert res.offer.amount == 49.99 and res.offer.currency == "USD"
-    assert res.offer.billing_period == "monthly"
+    # 四周期全解析：月付 $49.99/月 vs 年付 $499.99/12=$41.67/月
+    assert res.offer.amount == 499.99 and res.offer.currency == "USD"
+    assert res.offer.billing_period == "yearly"
+    assert res.offer.monthly_amount == 41.67
+    assert res.offer.price_points == (
+        ("yearly", 41.67),
+        ("semiannual", 45.0),
+        ("quarterly", 46.66),
+        ("monthly", 49.99),
+    )
     assert res.offer.product_url == "https://bandwagonhost.com/cart.php?a=add&pid=134"
 
 
@@ -949,3 +966,47 @@ def test_spartanhost_virtfusion_zero_available():
     assert res.offer.amount == 36.0 and res.offer.currency == "USD"
     assert res.offer.availability == "in_stock"
     assert res.offer.product_url.startswith("https://billing.spartanhost.net/")
+
+
+def test_parse_period_semiannual():
+    """2026-08-11：半年付周期识别（semi-annual / half-year / 半年付）。"""
+    from vps_monitor.monitor import _parse_period
+    for text in ("Semi-Annually $59.94", "half-yearly $55", "每半年 ¥300", "半年付 ¥290"):
+        assert _parse_period(text) == "semiannual", text
+    assert _parse_period("monthly $5") == "monthly"
+    assert _parse_period("annually $50") == "yearly"
+    assert _parse_period("quarterly $15") == "quarterly"
+
+
+def test_parse_all_price_periods_keeps_min_per_cycle():
+    """2026-08-11：同一套餐多支付周期单价不同——全部提取，同周期取最小，
+    按周期顺序返回；无周期价格返回 None。"""
+    from vps_monitor.monitor import _parse_all_price_periods
+    text = (
+        "Monthly $5.99 or Quarterly $16.47 (save 8%), Semi-Annually $29.94, "
+        "Annually $47.88 (save 33%). Was $7.99/month, now $5.99/month."
+    )
+    assert _parse_all_price_periods(text) == {
+        "monthly": 5.99,
+        "quarterly": 16.47,
+        "semiannual": 29.94,
+        "yearly": 47.88,
+    }
+    # 同周期多价格（原价 + 促销价）取最小
+    assert _parse_all_price_periods("Was $10.00/month, now $6.00/month") == {"monthly": 6.0}
+    # 无周期价格
+    assert _parse_all_price_periods("$9.99 only, no period words here") is None
+
+
+def test_offer_price_points_status_row():
+    """2026-08-11：price_points 写入 status 行；单周期回退（None）。"""
+    from vps_monitor.monitor import load_config, load_targets, parse_offer
+    from pathlib import Path
+    body = (Path(__file__).parent / "fixtures" / "bandwagon_cart.html").read_text(encoding="utf-8")
+    targets = {t.id: t for t in load_targets(load_config())}
+    res = parse_offer(body, targets["bandwagon-osaka-40g"])
+    assert res.offer.price_points
+    # 单周期（HostHatch from $12.00 / month）不产生 price_points
+    hh = (Path(__file__).parent / "fixtures" / "hosthatch_ssd_vps.html").read_text(encoding="utf-8")
+    r2 = parse_offer(hh, targets["hosthatch-la-nvme"])
+    assert r2.offer.price_points == ()

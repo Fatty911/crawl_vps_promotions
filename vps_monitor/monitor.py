@@ -120,6 +120,9 @@ class Offer:
     measured_routes: None = None
     offer_id: str = ""
     product_url: str = ""
+    # 全支付周期月化单价（(cycle, monthly_amount) 升序；空=仅主价格）
+    # 2026-08-11 用户要求：同一套餐按月/季/半年/年付单价可能不同
+    price_points: tuple = ()
 
 
 @dataclass(frozen=True)
@@ -784,6 +787,11 @@ def build_public_data(
             "billing_period": offer.billing_period if offer else None,
             "monthly_amount": offer.monthly_amount if offer else None,
             "price_raw": offer.price_raw if offer else None,
+            "price_points": (
+                [{"billing_period": cycle, "monthly_amount": monthly} for cycle, monthly in offer.price_points]
+                if offer and offer.price_points
+                else None
+            ),
             "provider_claimed_routes": list(target.provider_claimed_routes),
             "parsed_route_evidence": list(offer.parsed_route_evidence) if offer else [],
             "measured_routes": None,
@@ -824,6 +832,11 @@ def build_public_data(
                     "offer_id": offer.offer_id,
                     "product_url": offer.product_url,
                     "price_raw": offer.price_raw,
+                    "price_points": (
+                        [{"billing_period": cycle, "monthly_amount": monthly} for cycle, monthly in offer.price_points]
+                        if offer.price_points
+                        else None
+                    ),
                     "provider_claimed_routes": list(offer.provider_claimed_routes),
                     "parsed_route_evidence": list(offer.parsed_route_evidence),
                     "measured_routes": None,
@@ -1189,10 +1202,140 @@ def _parse_bound_price_period(
     return None
 
 
+# 支付周期 → 月化折算除数
+_PERIOD_DIVISOR = {"monthly": 1, "quarterly": 3, "semiannual": 6, "yearly": 12}
+
+# 周期展示顺序（月付 → 年付）
+_PERIOD_ORDER = ("monthly", "quarterly", "semiannual", "yearly")
+
+
+def _parse_all_price_periods(text: str) -> dict[str, float] | None:
+    """提取文本中所有「金额 + 支付周期」组合（2026-08-11 用户要求：
+    同一套餐按月/季/半年/年付单价可能不同）。
+
+    两阶段解析：
+    1. 「金额 USD 周期词」三元组（如 "$49.99 USD Monthly"）——周期词
+       紧跟金额的计价单位，归属明确；
+    2. 其余金额就近归属：金额前后各取最近的周期词，紧贴（间隔 ≤2 字符
+       且无字母）优先，否则取距离更近者。
+
+    返回 {cycle: amount}：同周期出现多个价格时取最小（促销价优先）；
+    无任何带周期价格时返回 None。金额为对应周期的总价（如 quarterly
+    的 $16.47 是 3 个月总价），月化单价由调用方按 _PERIOD_DIVISOR 折算。
+    """
+    patterns = (
+        (re.compile(r"US\$\s*([0-9]+(?:\.[0-9]{1,2})?)", re.I), "USD"),
+        (re.compile(r"\$\s*([0-9]+(?:\.[0-9]{1,2})?)\s*(?:USD)?", re.I), "USD"),
+        (re.compile(r"([0-9]+(?:\.[0-9]{1,2})?)\s*USD", re.I), "USD"),
+        (re.compile(r"(?:¥|￥|RMB\s*)([0-9]+(?:\.[0-9]{1,2})?)", re.I), "CNY"),
+        (re.compile(r"([0-9]+(?:\.[0-9]{1,2})?)\s*(?:元|CNY)", re.I), "CNY"),
+        (re.compile(r"€\s*([0-9]+(?:\.[0-9]{1,2})?)"), "EUR"),
+        (re.compile(r"£\s*([0-9]+(?:\.[0-9]{1,2})?)"), "GBP"),
+        (re.compile(r"([0-9]+(?:\.[0-9]{1,2})?)\s*CAD", re.I), "CAD"),
+    )
+    matches: list[tuple[int, int, float, str, str]] = []
+    for pattern, currency in patterns:
+        for match in pattern.finditer(text):
+            span = (match.start(), match.end())
+            if any(start < span[1] and span[0] < end for start, end, *_ in matches):
+                continue
+            amount = float(match.group(1))
+            if amount > 0:
+                matches.append((span[0], span[1], amount, currency, match.group(0)))
+    matches.sort(key=lambda item: item[0])
+
+    period_re = re.compile(
+        r"(?:semi-annually|half-yearly|semi-annual|semi annual|semiannual|half-year|"
+        r"half yearly|每半年|半年付|半年|per quarterly|/quarter|quarterly|每季|季度|"
+        r"per year|/year|annually|annual|yearly|每年|年付|per month|/month|/ ?mo|/mth|"
+        r"monthly|/月|每月|月付)",
+        re.I,
+    )
+
+    def _cycle_of(word: str) -> str:
+        lowered = word.casefold()
+        if any(w in lowered for w in ("semi-annual", "semi annual", "semiannual", "half-year", "half yearly", "半年")):
+            return "semiannual"
+        if any(w in lowered for w in ("quarterly", "per quarterly", "/quarter", "季度")):
+            return "quarterly"
+        if any(w in lowered for w in ("annually", "annual", "yearly", "per year", "/year", "年")):
+            return "yearly"
+        return "monthly"
+
+    by_period: dict[str, float] = {}
+    consumed: list[tuple[int, int]] = []  # 三元组区间（金额 start → 周期词 end）
+
+    # 阶段 1：金额 USD 周期词 三元组（"$49.99 USD Monthly"）
+    for m in re.finditer(
+        r"([0-9]+(?:\.[0-9]{1,2})?)\s*USD\s*("
+        r"semi-annually|half-yearly|semi-annual|semi annual|semiannual|half-year|half yearly|"
+        r"per quarterly|/quarter|quarterly|per year|/year|annually|annual|yearly|"
+        r"per month|/month|/ ?mo|/mth|monthly)",
+        text,
+        re.I,
+    ):
+        amount = float(m.group(1))
+        if amount <= 0:
+            continue
+        cycle = _cycle_of(m.group(2))
+        by_period[cycle] = min(by_period.get(cycle, amount), amount)
+        consumed.append((m.start(), m.end()))
+
+    # 阶段 2：其余金额就近归属（紧贴优先，否则取距离更近者）
+    for index, (start, end, amount, currency, raw) in enumerate(matches):
+        if any(cs <= start and end <= ce for cs, ce in consumed):
+            continue  # 已被三元组消费
+        next_start = matches[index + 1][0] if index + 1 < len(matches) else len(text)
+        prev_cycle = prev_dist = prev_tight = prev_gap = None
+        for pm in period_re.finditer(text, 0, start):
+            pos, word = pm.start(), pm.group(0)
+            gap = text[pos + len(word) : start]
+            dist = start - pos
+            tight = len(gap) <= 2 and not re.search(r"[A-Za-z]", gap)
+            if prev_tight:
+                continue  # 已有紧贴前词，不再考虑更远的
+            if prev_dist is None or tight or dist < prev_dist:
+                prev_dist, prev_cycle, prev_tight, prev_gap = dist, _cycle_of(word), tight, gap
+        after_cycle = after_dist = after_tight = after_gap = None
+        for pm in period_re.finditer(text, end, next_start):
+            pos, word = pm.start(), pm.group(0)
+            gap = text[end:pos]
+            dist = pos - end
+            tight = len(gap) <= 2 and not re.search(r"[A-Za-z]", gap)
+            if after_tight:
+                continue
+            if after_dist is None or tight or dist < after_dist:
+                after_dist, after_cycle, after_tight, after_gap = dist, _cycle_of(word), tight, gap
+        if prev_dist is not None and after_dist is None:
+            period = prev_cycle
+        elif prev_dist is None:
+            period = after_cycle
+        elif prev_tight and not after_tight:
+            period = prev_cycle
+        elif after_tight and not prev_tight:
+            period = after_cycle
+        elif prev_tight and after_tight:
+            # 都紧贴：间隔更短者胜（"Semi-Annually $29.94, Annually" 中
+            # $29.94 归 semiannual——1 空格 < ", " 2 字符）
+            period = prev_cycle if len(prev_gap) <= len(after_gap) else after_cycle
+        else:
+            period = prev_cycle if prev_dist <= after_dist else after_cycle
+        if period:
+            by_period[period] = min(by_period.get(period, amount), amount)
+    if not by_period:
+        return None
+    return {cycle: by_period[cycle] for cycle in _PERIOD_ORDER if cycle in by_period}
+
+
 def _parse_period(text: str) -> str | None:
     lowered = text.casefold()
     if any(word in lowered for word in ("quarterly", "per quarterly", "/quarter", "每季", "季度")):
         return "quarterly"
+    if any(
+        word in lowered
+        for word in ("semi-annual", "semi annual", "semiannual", "half-year", "half yearly", "每半年", "半年付", "半年")
+    ):
+        return "semiannual"
     if any(word in lowered for word in ("annually", "annual", "yearly", "per year", "/year", "每年", "年付")):
         return "yearly"
     if any(word in lowered for word in ("monthly", "per month", "/month", "/ month", "/mo", "/mth", "/月", "每月", "月付")):
@@ -1243,14 +1386,34 @@ def _offer_from_text(
     if price_period is None or availability is None or not product_url or not offer_id:
         return None
     amount, currency, price_raw, period = price_period
-    divisor = {"monthly": 1, "quarterly": 3, "yearly": 12}[period]
+    divisor = _PERIOD_DIVISOR.get(period, 1)
+    # 全支付周期解析（2026-08-11 用户要求）：同一套餐按月/季/半年/年付
+    # 单价可能不同。主价取月化最低的周期（好价语义），price_points 保留
+    # 全部周期月化单价；无法解析多周期时回退单价格。
+    all_periods = _parse_all_price_periods(text)
+    price_points: tuple = ()
+    monthly_amount = round(amount / divisor, 2)
+    if all_periods is not None and len(all_periods) > 1:
+        # 按月化单价升序排序（首项即最低价，前端取 points[0] 展示最低月化）
+        price_points = tuple(
+            sorted(
+                (
+                    (cycle, round(raw_amount / _PERIOD_DIVISOR.get(cycle, 1), 2))
+                    for cycle, raw_amount in all_periods.items()
+                ),
+                key=lambda item: item[1],
+            )
+        )
+        best_cycle = min(all_periods, key=lambda c: all_periods[c] / _PERIOD_DIVISOR.get(c, 1))
+        amount, period = all_periods[best_cycle], best_cycle
+        monthly_amount = round(amount / _PERIOD_DIVISOR.get(period, 1), 2)
     routes = tuple(word for word in ROUTE_WORDS if word.casefold() in text.casefold())
     return Offer(
         plan_name=target.plan_name,
         amount=amount,
         currency=currency,
         billing_period=period,
-        monthly_amount=round(amount / divisor, 2),
+        monthly_amount=monthly_amount,
         availability=availability,
         price_raw=price_raw,
         specs=" ".join(text.split())[:1000],
@@ -1258,6 +1421,7 @@ def _offer_from_text(
         parsed_route_evidence=routes,
         offer_id=offer_id,
         product_url=product_url,
+        price_points=price_points,
     )
 
 

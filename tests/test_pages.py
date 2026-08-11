@@ -120,3 +120,20 @@ def test_opt_price_default_filter_and_cny_format():
     assert 'addEventListener("mouseenter"' in script
     assert ".hscroll-float" in css
     assert "position: fixed" in css
+
+
+def test_monthly_price_points_frontend():
+    """2026-08-11 用户要求：同一套餐按月/季/半年/年付单价可能不同——
+    前端需展示 price_points（最低月化+周期标注+全周期 tooltip），
+    月化>200 默认隐藏按最低月化判断。"""
+    src = Path(__file__).parent.parent / "web" / "app.js"
+    text = src.read_text(encoding="utf-8")
+    assert "price_points" in text
+    assert "PERIOD_LABELS" in text
+    assert "monthlyLabel" in text
+    assert "pricePointsTitle" in text
+    assert "月付" in text and "季付" in text and "半年付" in text and "年付" in text
+    # 最低月化优先于 monthly_amount（多周期时）
+    assert "points[0].monthly_amount" in text
+    # >200 隐藏过滤用同一 monthlyCnyValue（含 price_points 最低月化）
+    assert "monthlyCnyValue(row)" in text

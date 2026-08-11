@@ -12,11 +12,46 @@ const currencyFilter = document.getElementById("currency-filter");
 // 仅用于展示换算，不改原始金额；CNY 本身按 1:1 统一格式）
 const CNY_RATES = { USD: 7.25, EUR: 7.9, CNY: 1 };
 
-// 月化金额换算为 CNY 数值（无价格返回 null；未知货币按原值保守处理）
+// 月化金额换算为 CNY 数值（无价格返回 null；未知货币按原值保守处理）。
+// 2026-08-11：同一套餐多支付周期单价可能不同——优先取 price_points
+// 最低月化（列表按周期升序，首项即最低），回退 monthly_amount。
 function monthlyCnyValue(row) {
+  const points = Array.isArray(row.price_points) ? row.price_points : null;
+  if (points && points.length > 0 && points[0].monthly_amount !== null && points[0].monthly_amount !== undefined) {
+    const rate = CNY_RATES[row.currency];
+    const value = points[0].monthly_amount;
+    return rate === undefined ? value : value * rate;
+  }
   if (row.monthly_amount === null || row.monthly_amount === undefined) return null;
   const rate = CNY_RATES[row.currency];
   return rate === undefined ? row.monthly_amount : row.monthly_amount * rate;
+}
+
+// 支付周期中文名（2026-08-11：月化列标注多周期）
+const PERIOD_LABELS = { monthly: "月付", quarterly: "季付", semiannual: "半年付", yearly: "年付" };
+
+// 月化展示文本：多周期时标注最低价周期（如 "¥28.94 · 年付"）
+function monthlyLabel(row) {
+  const value = monthlyCnyValue(row);
+  if (value === null) return null;
+  const points = Array.isArray(row.price_points) ? row.price_points : null;
+  if (points && points.length > 1 && points[0].billing_period && points[0].billing_period !== row.billing_period) {
+    return `¥${value.toFixed(2)} · ${PERIOD_LABELS[points[0].billing_period] || points[0].billing_period}`;
+  }
+  return `¥${value.toFixed(2)}`;
+}
+
+// 多周期 tooltip：列出全部支付周期的月化单价
+function pricePointsTitle(row) {
+  const points = Array.isArray(row.price_points) ? row.price_points : null;
+  if (!points || points.length <= 1) return "";
+  const rate = CNY_RATES[row.currency];
+  const parts = points.map((p) => {
+    const label = PERIOD_LABELS[p.billing_period] || p.billing_period;
+    const v = p.monthly_amount === null || p.monthly_amount === undefined ? p.monthly_amount : p.monthly_amount * (rate === undefined ? 1 : rate);
+    return v === null || v === undefined ? `${label} 无价` : `${label} ¥${v.toFixed(2)}/月`;
+  });
+  return parts.join("  ·  ");
 }
 const billingFilter = document.getElementById("billing-filter");
 const availabilityFilter = document.getElementById("availability-filter");
@@ -256,13 +291,13 @@ function render() {
       plan.replaceChildren(link);
     }
     const raw = row.amount === null ? null : `${row.amount} ${row.currency} / ${row.billing_period}`;
-    // 月化价格统一按 CNY 展示（2026-08-11 用户要求：格式统一为 ¥xx.xx）
-    const monthlyCny = (() => {
-      const value = monthlyCnyValue(row);
-      if (value === null) return null;
-      return `¥${value.toFixed(2)}`;
-    })();
-    const monthly = monthlyCny;
+    // 月化价格统一按 CNY 展示（2026-08-11 用户要求：格式统一为 ¥xx.xx）；
+    // 多支付周期时标注最低价周期 + tooltip 列出全部周期月化单价
+    const monthlyNode = cell(monthlyLabel(row));
+    const pointsTitle = pricePointsTitle(row);
+    if (pointsTitle) {
+      monthlyNode.title = pointsTitle;
+    }
     const reason = row.rejection_reason || row.block_reason || "";
     const diag = row.browser_diag || "";
     const reasonEl = document.createElement("td");
@@ -279,7 +314,7 @@ function render() {
     tr.append(cell(row.provider), plan, cell(row.region), cell(row.outcome),
       cell(cpu === null ? null : `${cpu} 核`), cell(ramLabel), cell(diskLabel(row)),
       routeCell(row.provider_claimed_routes),
-      cell(raw), cell(monthly), cell(stars(row.value_score)), cell(stars(row.reliability)),
+      cell(raw), monthlyNode, cell(stars(row.value_score)), cell(stars(row.reliability)),
       cell(oversellLabel(row.oversell)), cell(row.availability), reasonEl);
     bodyNode.append(tr);
 
