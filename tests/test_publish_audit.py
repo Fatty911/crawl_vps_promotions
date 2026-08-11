@@ -309,7 +309,7 @@ def test_pages_deploy_frontend_only_workflow():
     assert "actions/github-script@v8" in text
     assert "actions/download-artifact@v5" in text
     assert "pages-payload-" in text
-    assert "cp -r web/* site/web/" in text
+    assert "cp -r web/* site/" in text
     assert "actions/upload-pages-artifact@v4" in text
     assert "actions/deploy-pages@v4" in text
     # 前端验证：web/ 文件哈希与线上精确一致
