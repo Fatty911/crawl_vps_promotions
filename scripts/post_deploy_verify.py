@@ -17,11 +17,19 @@ MAX_FILE_BYTES = 25 * 1024 * 1024
 
 
 def compare_manifests(expected: dict, actual: dict) -> list[str]:
-    return [
+    # web/ 前端文件可由独立 pages-deploy workflow 更新（2026-08-11 用户
+    # 要求：前端展示改动独立部署、不被爬取/merge 阻塞），其哈希在两次
+    # monitor 构建之间允许与线上不一致；data/ 与核心字段必须严格一致。
+    def files_minus_web(files):
+        return {k: v for k, v in (files or {}).items() if not str(k).startswith("web/")}
+    fields = [
         field
-        for field in ("schema_version", "batch_id", "source_sha", "mode", "run_id", "run_attempt", "files")
+        for field in ("schema_version", "batch_id", "source_sha", "mode", "run_id", "run_attempt")
         if expected.get(field) != actual.get(field)
     ]
+    if files_minus_web(expected.get("files")) != files_minus_web(actual.get("files")):
+        fields.append("files(web-excluded)")
+    return fields
 
 
 def _get(url: str) -> bytes:
@@ -39,6 +47,9 @@ def verify(base_url: str, expected: dict) -> None:
     if mismatches:
         raise ValueError(f"public manifest mismatch: {','.join(mismatches)}")
     for name, metadata in expected["files"].items():
+        if str(name).startswith("web/"):
+            # 前端文件由 pages-deploy workflow 独立验证哈希（不在此处比对）
+            continue
         path = PurePosixPath(str(name))
         if path.is_absolute() or ".." in path.parts:
             raise ValueError(f"unsafe manifest path: {name}")

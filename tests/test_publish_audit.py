@@ -138,7 +138,43 @@ def test_post_deploy_manifest_comparison_binds_batch_sha_and_files():
     }
     assert compare_manifests(expected, dict(expected)) == []
     actual = {**expected, "files": {}}
-    assert compare_manifests(expected, actual) == ["files"]
+    assert compare_manifests(expected, actual) == ["files(web-excluded)"]
+
+
+def test_post_deploy_manifest_comparison_allows_frontend_only_drift():
+    """2026-08-11 用户要求：前端展示改动独立部署（pages-deploy workflow），
+    web/ 文件哈希在两次 monitor 构建之间允许与线上不一致；data/ 与核心
+    字段必须严格一致。"""
+    expected = {
+        "schema_version": 4,
+        "batch_id": "batch-2",
+        "source_sha": "d" * 40,
+        "run_id": 1,
+        "run_attempt": 1,
+        "mode": "live",
+        "files": {
+            "data/status.json": {"sha256": "e" * 64, "size": 2},
+            "web/app.js": {"sha256": "a" * 64, "size": 1},
+        },
+    }
+    # 仅 web/ 变化：允许
+    frontend_only = {
+        **expected,
+        "files": {
+            "data/status.json": {"sha256": "e" * 64, "size": 2},
+            "web/app.js": {"sha256": "b" * 64, "size": 1},
+        },
+    }
+    assert compare_manifests(expected, frontend_only) == []
+    # data/ 变化：必须拦截
+    data_changed = {
+        **expected,
+        "files": {
+            "data/status.json": {"sha256": "f" * 64, "size": 2},
+            "web/app.js": {"sha256": "a" * 64, "size": 1},
+        },
+    }
+    assert compare_manifests(expected, data_changed) == ["files(web-excluded)"]
 
 
 def test_fixture_output_cannot_pass_structure_or_product_cli_gates(tmp_path):
@@ -258,3 +294,27 @@ def test_verify_prices_data_semantic_gate(monkeypatch):
         raise AssertionError("missing task must fail")
     except ValueError as exc:
         assert "missing tasks" in str(exc)
+
+
+def test_pages_deploy_frontend_only_workflow():
+    """2026-08-11 用户要求：前端展示改动拆成独立部署路径，不被爬取/merge
+    阻塞。pages-deploy.yml 只响应 web/**，复用最新 monitor payload 的
+    data/，覆盖 web/ 后独立部署；与 monitor deploy 共用 pages-deploy
+    concurrency 组串行。"""
+    wf = Path(__file__).parents[1] / ".github" / "workflows" / "pages-deploy.yml"
+    text = wf.read_text(encoding="utf-8")
+    assert "name: pages-deploy (frontend-only)" in text
+    assert "paths:" in text and "web/**" in text
+    assert "concurrency:" in text and "group: pages-deploy" in text
+    assert "gh run download" in text
+    assert "pages-payload-" in text
+    assert "cp -r web/* site/web/" in text
+    assert "actions/upload-pages-artifact@v4" in text
+    assert "actions/deploy-pages@v4" in text
+    # 前端验证：web/ 文件哈希与线上精确一致
+    assert "hash mismatch" in text
+    # monitor 的 deploy job 必须加入同组串行，避免 Pages artifact 竞争
+    monitor = Path(__file__).parents[1] / ".github" / "workflows" / "vps-monitor.yml"
+    mtext = monitor.read_text(encoding="utf-8")
+    assert mtext.count("group: pages-deploy") == 1
+    assert "concurrency:" in mtext

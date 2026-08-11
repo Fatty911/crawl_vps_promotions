@@ -121,6 +121,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    concurrency:
+      group: pages-deploy
+      cancel-in-progress: false
     permissions:
       contents: read
       pages: write
