@@ -430,7 +430,11 @@ def test_browser_limiter_global_one_and_crawl_preserves_config_order():
         request_fn=lambda _: challenge,
         browser_fn=lambda _: pytest.fail("403 must not invoke browser"),
     )
-    assert [result.target.id for result in results] == [target.id for target in targets]
+    # crawl order must follow prioritize_targets (priority, id) — not raw
+    # config order, which diverges once priorities are non-monotonic
+    # (2026-08-10: contabo matrix 175-196 inserted before DMIT 180).
+    from vps_monitor.monitor import prioritize_targets
+    assert [result.target.id for result in results] == [t.id for t in prioritize_targets(targets)]
     assert len(results) == len(targets)
 
 
@@ -814,3 +818,39 @@ def test_parse_offer_linveo_panel_configure_button():
     assert result.offer.billing_period == "monthly"
     assert result.offer.availability == "in_stock"
     assert "billing.linveo.com" in (result.offer.product_url or "")
+
+
+def test_parse_offer_contabo_full_matrix():
+    """Contabo full product matrix must parse without JS: Cloud VPS 4-18
+    (€4.40-39.20 promo prices, struck previous-price excluded) and Cloud
+    VPS Plus 4-18 (EPYC NVMe, €10.80-79.20). All 12 tiers live on two
+    server-rendered pages (observed 2026-08-10 — user pasted the rendered
+    text of both pages and asked why the matrix can't be parsed)."""
+    expected = {
+        "contabo-vps-m": (4.4, "vps"),
+        "contabo-vps-6": (6.0, "vps"),
+        "contabo-vps-8": (11.2, "vps"),
+        "contabo-vps-12": (20.0, "vps"),
+        "contabo-vps-16": (29.6, "vps"),
+        "contabo-vps-18": (39.2, "vps"),
+        "contabo-plus-4": (10.8, "performance"),
+        "contabo-plus-6": (15.2, "performance"),
+        "contabo-plus-8": (28.0, "performance"),
+        "contabo-plus-12": (47.2, "performance"),
+        "contabo-plus-16": (63.2, "performance"),
+        "contabo-plus-18": (79.2, "performance"),
+    }
+    fixtures = {
+        "vps": fixture("contabo_vps_full.html"),
+        "performance": fixture("contabo_vps_performance_full.html"),
+    }
+    targets = {t.id: t for t in load_targets(load_config())}
+    for tid, (amount, page) in expected.items():
+        target = targets[tid]
+        result = parse_offer(fixtures[page], target)
+        assert result.outcome == "success", (tid, result.block_reason)
+        assert result.offer is not None
+        assert abs(result.offer.amount - amount) < 0.01, (tid, result.offer.amount)
+        assert result.offer.currency == "EUR"
+        assert result.offer.billing_period == "monthly"
+        assert result.offer.availability == "in_stock"

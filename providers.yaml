@@ -369,22 +369,6 @@ targets:
     oversell: medium
     reliability_note: 性价比高，社区口碑中等，促销少
     specs: {cpu: 1, ram_gb: 2, storage_gb: 40, bandwidth_gbps: 1}
-  # ============ Contabo（新）============
-  - id: contabo-vps-m
-    <<: *target_defaults
-    priority: 175
-    expected_domains: [contabo.com]
-    expected_currencies: [EUR, USD]
-    provider: Contabo
-    plan_name: Cloud VPS 4
-    plan_tokens: [Cloud VPS 4]
-    url: https://contabo.com/en/vps/
-    region: EU
-    provider_claimed_routes: [BGP]
-    reliability: 6
-    oversell: high
-    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
-    specs: {cpu: 4, ram_gb: 8, storage_gb: 100, bandwidth_gbps: 1}
   # ============ DMIT（新）============
   - id: dmit-lax-pro
     <<: *target_defaults
@@ -463,6 +447,187 @@ targets:
     oversell: high
     reliability_note: 用户点名避坑：口碑差、超售严重、客服难联系
     specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.3}
+# ============ Contabo（新）============
+  - id: contabo-vps-m
+    <<: *target_defaults
+    priority: 201
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS 4
+    plan_tokens: [Cloud VPS 4]
+    url: https://contabo.com/en/vps/
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 4, ram_gb: 8, storage_gb: 100, bandwidth_gbps: 1}
+  - id: contabo-vps-6
+    <<: *target_defaults
+    priority: 202
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS 6
+    plan_tokens: [Cloud VPS 6]
+    url: https://contabo.com/en/vps/#cloud-vps-6
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 6, ram_gb: 12, storage_gb: 200, bandwidth_gbps: 0.3}
+  - id: contabo-vps-8
+    <<: *target_defaults
+    priority: 203
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS 8
+    plan_tokens: [Cloud VPS 8]
+    url: https://contabo.com/en/vps/#cloud-vps-8
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 8, ram_gb: 24, storage_gb: 300, bandwidth_gbps: 0.6}
+  - id: contabo-vps-12
+    <<: *target_defaults
+    priority: 204
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS 12
+    plan_tokens: [Cloud VPS 12]
+    url: https://contabo.com/en/vps/#cloud-vps-12
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 12, ram_gb: 48, storage_gb: 400, bandwidth_gbps: 0.8}
+  - id: contabo-vps-16
+    <<: *target_defaults
+    priority: 205
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS 16
+    plan_tokens: [Cloud VPS 16]
+    url: https://contabo.com/en/vps/#cloud-vps-16
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 16, ram_gb: 64, storage_gb: 500, bandwidth_gbps: 1}
+  - id: contabo-vps-18
+    <<: *target_defaults
+    priority: 206
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS 18
+    plan_tokens: [Cloud VPS 18]
+    url: https://contabo.com/en/vps/#cloud-vps-18
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 18, ram_gb: 96, storage_gb: 600, bandwidth_gbps: 1}
+  - id: contabo-plus-4
+    <<: *target_defaults
+    priority: 207
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS Plus 4
+    plan_tokens: [Cloud VPS Plus 4]
+    url: https://contabo.com/en/vps-performance/#cloud-vps-plus-4
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 4, ram_gb: 8, storage_gb: 150, bandwidth_gbps: 0.5}
+  - id: contabo-plus-6
+    <<: *target_defaults
+    priority: 208
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS Plus 6
+    plan_tokens: [Cloud VPS Plus 6]
+    url: https://contabo.com/en/vps-performance/#cloud-vps-plus-6
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 6, ram_gb: 12, storage_gb: 300, bandwidth_gbps: 0.5}
+  - id: contabo-plus-8
+    <<: *target_defaults
+    priority: 209
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS Plus 8
+    plan_tokens: [Cloud VPS Plus 8]
+    url: https://contabo.com/en/vps-performance/#cloud-vps-plus-8
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 8, ram_gb: 24, storage_gb: 450, bandwidth_gbps: 1}
+  - id: contabo-plus-12
+    <<: *target_defaults
+    priority: 210
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS Plus 12
+    plan_tokens: [Cloud VPS Plus 12]
+    url: https://contabo.com/en/vps-performance/#cloud-vps-plus-12
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 12, ram_gb: 48, storage_gb: 600, bandwidth_gbps: 1}
+  - id: contabo-plus-16
+    <<: *target_defaults
+    priority: 211
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS Plus 16
+    plan_tokens: [Cloud VPS Plus 16]
+    url: https://contabo.com/en/vps-performance/#cloud-vps-plus-16
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 16, ram_gb: 64, storage_gb: 750, bandwidth_gbps: 1}
+  - id: contabo-plus-18
+    <<: *target_defaults
+    priority: 212
+    expected_domains: [contabo.com]
+    expected_currencies: [EUR, USD]
+    provider: Contabo
+    plan_name: Cloud VPS Plus 18
+    plan_tokens: [Cloud VPS Plus 18]
+    url: https://contabo.com/en/vps-performance/#cloud-vps-plus-18
+    region: EU
+    provider_claimed_routes: [BGP]
+    reliability: 6
+    oversell: high
+    reliability_note: 德国大厂便宜大碗，但超售争议多，社区口碑两极
+    specs: {cpu: 18, ram_gb: 96, storage_gb: 900, bandwidth_gbps: 1}
   - id: "linveo-ohio-vps"
     <<: *target_defaults
     priority: 300
