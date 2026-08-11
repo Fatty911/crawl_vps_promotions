@@ -40,21 +40,21 @@ def test_pages_assets_distinguish_live_states_without_sample_or_secret_fallbacks
     assert "HISTORY_PAGE_SIZE = 50" in script
 
 
-def test_pages_table_has_specs_disk_and_route_columns():
-    """The table must expose CPU cores, RAM, disk type+size, and route info,
-    with Beijing-fast premium routes highlighted (user requirement 2026-08-10)."""
+def test_pages_cards_have_specs_and_route_highlight():
+    """卡片视图必须展示 CPU 核数、内存、硬盘类型+容量与线路信息，且北京
+    优化线路高亮（用户要求 2026-08-10/11；表格已移除，功能并入卡片）。"""
     index = (WEB / "index.html").read_text(encoding="utf-8")
     script = (WEB / "app.js").read_text(encoding="utf-8")
     styles = (WEB / "styles.css").read_text(encoding="utf-8")
-    # New table headers.
-    for header in ("CPU", "内存", "硬盘", "线路"):
-        assert f"<th>{header}</th>" in index
+    # 卡片 specs 字段（原表格列信息并入卡片）。
+    assert "card-specs" in script
+    assert "CPU ${cpu} 核" in script
+    assert "内存 ${ram}GB" in script
     # Spec + disk helpers in script.
     assert "function specValue" in script
     assert "function diskType" in script
     assert "function diskLabel" in script
     assert "specs" in script  # row.specs is read
-    assert "routeCell" in script
     # Beijing-fast route highlight list + class.
     assert "BEIJING_FAST_ROUTES" in script
     assert "cn2 gia" in script
@@ -106,7 +106,7 @@ def test_opt_ram_default_filter():
 
 def test_opt_price_default_filter_and_cny_format():
     """2026-08-11 用户要求：默认隐藏月化 >¥200 的套餐；月化金额格式统一为
-    ¥xx.xx（含 CNY 本币）；浮动横向滚动条 hover 表格时浮现。"""
+    ¥xx.xx（含 CNY 本币）；卡片视图为唯一展示（表格已移除）。"""
     index = (WEB / "index.html").read_text(encoding="utf-8")
     script = (WEB / "app.js").read_text(encoding="utf-8")
     css = (WEB / "styles.css").read_text(encoding="utf-8")
@@ -116,10 +116,30 @@ def test_opt_price_default_filter_and_cny_format():
     assert "function monthlyCnyValue" in script
     assert "v <= 200" in script
     assert 'return `¥${value.toFixed(2)}`' in script
-    assert "function initHScroll" in script
-    assert 'addEventListener("mouseenter"' in script
-    assert ".hscroll-float" in css
-    assert "position: fixed" in css
+
+
+def test_table_view_removed_cards_complete():
+    """2026-08-11 用户要求：卡片与表格内容重复，只保留卡片视图。
+    表格 DOM/渲染/滚动条样式全部移除；卡片补齐原表格字段
+    （链接/规格/线路 badge 高亮/月化 tooltip/库存/原因）。"""
+    index = (WEB / "index.html").read_text(encoding="utf-8")
+    script = (WEB / "app.js").read_text(encoding="utf-8")
+    css = (WEB / "styles.css").read_text(encoding="utf-8")
+    # 表格 DOM 与渲染逻辑已删除
+    assert 'id="status-body"' not in index
+    assert "table-wrap" not in index
+    assert ".table-wrap {" not in css
+    assert "function initHScroll" not in script
+    assert ".hscroll-float {" not in css
+    # 卡片视图保留并补齐原表格字段
+    assert 'id="cards"' in index
+    assert "card-specs" in script
+    assert "card-price" in script
+    assert "card-status" in script
+    assert "route-badge" in script
+    assert "route-fast" in script
+    assert "monthlyLabel(row)" in script
+    assert "pricePointsTitle(row)" in script
 
 
 def test_monthly_price_points_frontend():
