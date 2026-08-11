@@ -917,3 +917,35 @@ def test_hosthatch_spa_data_table_row():
     assert res.offer.amount == 4.0 and res.offer.currency == "USD"
     assert res.offer.billing_period == "monthly"
     assert res.offer.product_url == "https://hosthatch.com/ssd-vps"
+
+
+def test_layerstack_pricing_usd_mth():
+    """LayerStack (2026-08-11): pricing page renders US$X /mth rows in
+    <tr> (US$ prefix + /mth period were both unsupported before).
+    Also: R111 tier was discontinued — now tracked as R208."""
+    from vps_monitor.monitor import load_config, load_targets, parse_offer
+    body = (Path(__file__).parent / "fixtures" / "layerstack_pricing.html").read_text(encoding="utf-8")
+    targets = {t.id: t for t in load_targets(load_config())}
+    res = parse_offer(body, targets["layerstack-r108"])
+    assert res.outcome == "success", res.block_reason
+    assert res.offer.amount == 17.76 and res.offer.currency == "USD"
+    assert res.offer.billing_period == "monthly"
+    res = parse_offer(body, targets["layerstack-r208"])
+    assert res.outcome == "success", res.block_reason
+    assert res.offer.amount == 34.49 and res.offer.currency == "USD"
+
+
+def test_spartanhost_virtfusion_zero_available():
+    """SpartanHost (2026-08-11): billing domain moved from
+    billing.spartantech.com (dead cert) to billing.spartanhost.net; CN2 GIA
+    tier retired, now AS9929-CMIN2 SEAKVM line. Virtfusion renders "0
+    Available" placeholder on every tier while Order Now is enabled — must
+    parse as in_stock, not out_of_stock."""
+    from vps_monitor.monitor import load_config, load_targets, parse_offer
+    body = (Path(__file__).parent / "fixtures" / "spartanhost_cmin2.html").read_text(encoding="utf-8")
+    targets = {t.id: t for t in load_targets(load_config())}
+    res = parse_offer(body, targets["spartanhost-sea-9929-cmin2"])
+    assert res.outcome == "success", res.block_reason
+    assert res.offer.amount == 36.0 and res.offer.currency == "USD"
+    assert res.offer.availability == "in_stock"
+    assert res.offer.product_url.startswith("https://billing.spartanhost.net/")

@@ -1,0 +1,1280 @@
+<!doctype html>
+<html lang="en" class="index">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Shopping Cart - Spartan Host Ltd</title>
+    <!-- Styling -->
+
+<link href="/templates/spartan/css/skeleton.css" rel="stylesheet">
+<link href="/templates/spartan/css/style.css" rel="stylesheet">
+<link href="/templates/spartan/css/responsive.css" rel="stylesheet">
+
+<link href="/templates/twenty-one/css/fontawesome.css" rel="stylesheet">
+<link href="/templates/twenty-one/css/all.min.css?v=456d8f" rel="stylesheet">
+<link href="/templates/twenty-one/css/theme.min.css?v=456d8f" rel="stylesheet">
+<link href="/assets/css/fontawesome-all.min.css" rel="stylesheet">
+
+<script src="/templates/spartan/js/jquery.min.js"></script>
+<script src="/templates/spartan/js/scripts.js"></script>
+<link href="/templates/spartan/css/custom.css" rel="stylesheet">
+
+<script>
+    var csrfToken = '871a4885ab1c471c6509031ae8924d947d779866',
+        markdownGuide = 'Markdown Guide',
+        locale = 'en',
+        saved = 'saved',
+        saving = 'autosaving',
+        whmcsBaseUrl = "",
+        requiredText = 'Required';
+    </script>
+<script src="/templates/twenty-one/js/scripts.min.js?v=456d8f"></script>
+
+<!--Christmas Closure -->
+<!--<div style="background-color: #ffcccc; color: #cc0000; padding: 10px; text-align: center; border: 1px solid #cc0000; margin-bottom: 15px;">
+    <strong>Notice:</strong> We are closed today (25th December). Please only submit a support ticket if it's an emergency, all other tickets will be replied to from 26th December 9am UTC. Merry Christmas!
+</div>-->
+    <script type="text/javascript">
+
+var _gaq = _gaq || [];
+_gaq.push(['_setAccount', 'UA-49048240-2']);
+_gaq.push(['_trackPageview']);
+
+(function() {
+var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+})();
+
+</script>
+
+
+</head>
+<body class="primary-bg-color" data-phone-cc-input="1">
+
+    
+
+
+    
+    	<header class="header">
+    		<div class="container">
+    			<div class="row">
+    				<div class="three columns">
+    					<a href="https://billing.spartanhost.net/"><img src="https://billing.spartanhost.net/templates/spartan/images/logo.png" alt="Spartan Host" class="logo" /></a>
+    				</div>
+    				<div class="nine columns">
+
+
+              <div class="sites-nav pull-right">
+              <ul>
+              <li class="active"><a href="http://billing.spartanhost.net/index.php" class="button small">Billing <span>Panel</span><span class="cp">CP</span></a></li>
+              <li><a href="http://cp.spartanhost.net/index.php" class="button small">Minecraft <span>Panel</span><span class="cp">CP</span></a></li>
+              <li><a href="https://vps.spartanhost.net:4083" class="button small">VPS <span>Panel</span><span class="cp">CP</span></a></li>
+              <li><a href="http://spartanhost.org" class="button small"><span>Back to</span> main site</a></li>
+              </ul>
+              </div>
+
+                              <ul class="toolbar top-header-nav pull-right">
+                                </li>
+                                  <li class="nav-item ml-2">
+                                      <a class="btn nav-link cart-btn" href="/cart.php?a=view">
+                                          <i class="far fa-shopping-cart fa-fw"></i>
+                                          <span class="badge badge-info">0</span>
+                                          <span class="sr-only">Shopping Cart</span>
+                                      </a>
+                                  </li>
+                                  <li class="nav-item ml-3 d-lg-none">
+                                      <button class="btn nav-link" type="button" data-toggle="collapse" data-target="#mainNavbar">
+                                          <span class="fas fa-bars fa-fw"></span>
+                                      </button>
+                                  </li>
+                              </ul>
+
+                                            
+    				</div>
+    			</div>
+    		</div>
+    	</header>
+
+
+
+
+
+        <div class="navbar navbar-expand-lg main-navbar-wrapper">
+            <div class="container">
+                <div class="collapse navbar-collapse" id="mainNavbar">
+                    <form method="post" action="/knowledgebase/search" class="d-lg-none">
+<input type="hidden" name="token" value="871a4885ab1c471c6509031ae8924d947d779866" />
+                        <div class="input-group search w-100 mb-2">
+                            <div class="input-group-prepend">
+                                <button class="btn btn-default" type="submit">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                            <input class="form-control prepended-form-control" type="text" name="search" placeholder="Search our knowledgebase...">
+                        </div>
+                    </form>
+                    <ul id="nav" class="navbar-nav mr-auto">
+                            <li menuItemName="Home" class="d-block no-collapse" id="Primary_Navbar-Home">
+        <a class="pr-4" href="/index.php">
+                        Home
+                    </a>
+            </li>
+    <li menuItemName="Announcements" class="d-block" id="Primary_Navbar-Announcements">
+        <a class="pr-4" href="/announcements">
+                        Announcements
+                    </a>
+            </li>
+    <li menuItemName="Knowledgebase" class="d-block" id="Primary_Navbar-Knowledgebase">
+        <a class="pr-4" href="/knowledgebase">
+                        Knowledgebase
+                    </a>
+            </li>
+    <li menuItemName="Network Status" class="d-block" id="Primary_Navbar-Network_Status">
+        <a class="pr-4" href="http://status.spartanhost.net" target="_blank">
+                        Network Status
+                    </a>
+            </li>
+    <li menuItemName="Affiliates" class="d-block" id="Primary_Navbar-Affiliates">
+        <a class="pr-4" href="/affiliates.php">
+                        Affiliates
+                    </a>
+            </li>
+    <li menuItemName="Contact Us" class="d-block" id="Primary_Navbar-Contact_Us">
+        <a class="pr-4" href="/contact.php">
+                        Contact Us
+                    </a>
+            </li>
+    <li class="d-none dropdown collapsable-dropdown">
+        <a class="dropdown-toggle" href="#" id="navbarDropdownMenu" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            More
+        </a>
+        <ul class="collapsable-dropdown-menu dropdown-menu" aria-labelledby="navbarDropdownMenu">
+        </ul>
+    </li>
+                    </ul>
+                    <ul class="navbar-nav ml-auto">
+                            <li menuItemName="Account" class="d-block no-collapse dropdown no-collapse" id="Secondary_Navbar-Account">
+        <a class=" dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" href="#">
+                        Account
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-right">
+                                                <li menuItemName="Login" class="dropdown-item" id="Secondary_Navbar-Account-Login">
+                        <a href="/clientarea.php" class="dropdown-item px-2 py-0">
+                                                        Login
+                                                    </a>
+                    </li>
+                                                                <li menuItemName="Register" class="dropdown-item" id="Secondary_Navbar-Account-Register">
+                        <a href="/register.php" class="dropdown-item px-2 py-0">
+                                                        Register
+                                                    </a>
+                    </li>
+                                                                <div class="dropdown-divider"></div>
+                                                                <li menuItemName="Forgot Password?" class="dropdown-item" id="Secondary_Navbar-Account-Forgot_Password?">
+                        <a href="/password/reset" class="dropdown-item px-2 py-0">
+                                                        Forgot Password?
+                                                    </a>
+                    </li>
+                                        </ul>
+            </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+    
+    <nav class="master-breadcrumb" aria-label="breadcrumb">
+        <div class="container">
+            <ol class="breadcrumb">
+            <li class="breadcrumb-item active" aria-current="page">
+                        Shopping Cart
+                    </li>
+    </ol>
+        </div>
+    </nav>
+
+        
+    
+    <section id="main-body">
+        <div class="container">
+            <div class="row">
+
+                                            <div class="col-12 primary-content">
+            
+
+<link rel="stylesheet" type="text/css" href="/templates/orderforms/standard_cart/css/all.min.css?v=456d8f" />
+<script type="text/javascript" src="/templates/orderforms/standard_cart/js/scripts.min.js?v=456d8f"></script>
+<div id="order-standard_cart">
+    <div class="row">
+        <div class="cart-sidebar sidebar">
+                <div menuItemName="Categories" class="panel card card-sidebar mb-3 panel-sidebar">
+        <div class="panel-heading card-header">
+            <h3 class="panel-title">
+                                    <i class="fas fa-shopping-cart"></i>&nbsp;
+                
+                Categories
+
+                
+                <i class="fas fa-chevron-up card-minimise panel-minimise pull-right float-right"></i>
+            </h3>
+        </div>
+
+        
+                    <div class="list-group collapsable-card-body">
+                                                            <a menuItemName="Premium Minecraft Plans" href="/store/premium-minecraft-plans" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Premium_Minecraft_Plans">
+                            
+                            Premium Minecraft Plans
+
+                                                    </a>
+                                                                                <a menuItemName="Budget Minecraft Plans" href="/store/budget-minecraft-plans" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Budget_Minecraft_Plans">
+                            
+                            Budget Minecraft Plans
+
+                                                    </a>
+                                                                                <a menuItemName="DDoS Protected Dallas Web Hosting" href="/store/ddos-protected-dallas-web-hosting" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-DDoS_Protected_Dallas_Web_Hosting">
+                            
+                            DDoS Protected Dallas Web Hosting
+
+                                                    </a>
+                                                                                <a menuItemName="DDOS Protection" href="/store/ddos-protection" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-DDOS_Protection">
+                            
+                            DDOS Protection
+
+                                                    </a>
+                                                                                <a menuItemName="Seattle - Rapid Deploy Dedicated Servers (China Optimised)" href="/store/seattle-rapid-deploy-dedicated-servers-china-optimised" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Seattle_-_Rapid_Deploy_Dedicated_Servers_(China_Optimised)">
+                            
+                            Seattle - Rapid Deploy Dedicated Servers (China Optimised)
+
+                                                    </a>
+                                                                                <a menuItemName="DDoS Protected Seattle Dedicated Servers - China Optimised" href="/store/ddos-protected-seattle-dedicated-servers-china-optimised" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-DDoS_Protected_Seattle_Dedicated_Servers_-_China_Optimised">
+                            
+                            DDoS Protected Seattle Dedicated Servers - China Optimised
+
+                                                    </a>
+                                                                                <a menuItemName="DDoS Protected Seattle Colocation" href="/store/ddos-protected-seattle-colocation" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-DDoS_Protected_Seattle_Colocation">
+                            
+                            DDoS Protected Seattle Colocation
+
+                                                    </a>
+                                                                                <a menuItemName="Seattle - Additional Non DDoS Protected IPs (Dedicated Servers)" href="/store/seattle-additional-non-ddos-protected-ips-dedicated-servers" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Seattle_-_Additional_Non_DDoS_Protected_IPs_(Dedicated_Servers)">
+                            
+                            Seattle - Additional Non DDoS Protected IPs (Dedicated Servers)
+
+                                                    </a>
+                                                                                <a menuItemName="Seattle - Additional 20Gb/s Protected IPs  (Dedicated Servers)" href="/store/seattle-additional-20gbs-protected-ips-dedicated-servers" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Seattle_-_Additional_20Gb_s_Protected_IPs__(Dedicated_Servers)">
+                            
+                            Seattle - Additional 20Gb/s Protected IPs  (Dedicated Servers)
+
+                                                    </a>
+                                                                                <a menuItemName="Seattle - Additional 200Gb/s Protected IPs (Dedicated Servers)" href="/store/seattle-additional-200gbs-protected-ips-dedicated-servers" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Seattle_-_Additional_200Gb_s_Protected_IPs_(Dedicated_Servers)">
+                            
+                            Seattle - Additional 200Gb/s Protected IPs (Dedicated Servers)
+
+                                                    </a>
+                                                                                <a menuItemName="AS9929-CMIN2 Premium KVM VPS - Seattle" href="/store/cmin2-premium-kvm-vps-seattle" class="list-group-item list-group-item-action active" id="Secondary_Sidebar-Categories-AS9929-CMIN2_Premium_KVM_VPS_-_Seattle">
+                            
+                            AS9929-CMIN2 Premium KVM VPS - Seattle
+
+                                                    </a>
+                                                                                <a menuItemName="China Optimised Premium KVM VPS - Seattle" href="/store/ddos-protected-ssd-premium-kvm-vps-seattle" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-China_Optimised_Premium_KVM_VPS_-_Seattle">
+                            
+                            China Optimised Premium KVM VPS - Seattle
+
+                                                    </a>
+                                                                                <a menuItemName="DDoS Protected SSD E5 KVM VPS - Seattle" href="/store/ddos-protected-ssd-e5-kvm-vps-seattle" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-DDoS_Protected_SSD_E5_KVM_VPS_-_Seattle">
+                            
+                            DDoS Protected SSD E5 KVM VPS - Seattle
+
+                                                    </a>
+                                                                                <a menuItemName="DDoS Protected SSD E5 KVM VPS - Dallas" href="/store/ddos-protected-ssd-e5-kvm-vps-dallas" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-DDoS_Protected_SSD_E5_KVM_VPS_-_Dallas">
+                            
+                            DDoS Protected SSD E5 KVM VPS - Dallas
+
+                                                    </a>
+                                                                                <a menuItemName="DDoS Protected SSD Premium KVM VPS - Dallas" href="/store/dallas-premium-vps" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-DDoS_Protected_SSD_Premium_KVM_VPS_-_Dallas">
+                            
+                            DDoS Protected SSD Premium KVM VPS - Dallas
+
+                                                    </a>
+                                                                                <a menuItemName="Storage KVM VPS - Dallas" href="/store/storage-kvm-vps-dallas" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Storage_KVM_VPS_-_Dallas">
+                            
+                            Storage KVM VPS - Dallas
+
+                                                    </a>
+                                                                                <a menuItemName="DDoS Protected SSD Premium KVM VPS - Ashburn" href="/store/ddos-protected-ssd-premium-kvm-vps-ashburn" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-DDoS_Protected_SSD_Premium_KVM_VPS_-_Ashburn">
+                            
+                            DDoS Protected SSD Premium KVM VPS - Ashburn
+
+                                                    </a>
+                                                                                <a menuItemName="Dallas - Rapid Deploy Dedicated Servers" href="/store/dallas-rapid-deploy-dedicated-servers" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Dallas_-_Rapid_Deploy_Dedicated_Servers">
+                            
+                            Dallas - Rapid Deploy Dedicated Servers
+
+                                                    </a>
+                                                                                <a menuItemName="Dallas - Custom Dedicated Servers" href="/store/ddos-protected-dallas-dedicated-servers" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Dallas_-_Custom_Dedicated_Servers">
+                            
+                            Dallas - Custom Dedicated Servers
+
+                                                    </a>
+                                                                                <a menuItemName="Dallas - Additional DDoS Protected IPs (Dedicated Servers)" href="/store/dallas-additional-ddos-protected-ips" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Dallas_-_Additional_DDoS_Protected_IPs_(Dedicated_Servers)">
+                            
+                            Dallas - Additional DDoS Protected IPs (Dedicated Servers)
+
+                                                    </a>
+                                                                                <a menuItemName="IP Transit and other services" href="/store/ip-transit-and-other-services" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-IP_Transit_and_other_services">
+                            
+                            IP Transit and other services
+
+                                                    </a>
+                                                                                <a menuItemName="Licenses" href="/store/licenses" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Categories-Licenses">
+                            
+                            Licenses
+
+                                                    </a>
+                                                </div>
+        
+            </div>
+
+        <div menuItemName="Actions" class="panel card card-sidebar mb-3 panel-sidebar">
+        <div class="panel-heading card-header">
+            <h3 class="panel-title">
+                                    <i class="fas fa-plus"></i>&nbsp;
+                
+                Actions
+
+                
+                <i class="fas fa-chevron-up card-minimise panel-minimise pull-right float-right"></i>
+            </h3>
+        </div>
+
+        
+                    <div class="list-group collapsable-card-body">
+                                                            <a menuItemName="View Cart" href="/cart.php?a=view" class="list-group-item list-group-item-action" id="Secondary_Sidebar-Actions-View_Cart">
+                                                            <i class="fas fa-shopping-cart fa-fw"></i>&nbsp;
+                            
+                            View Cart
+
+                                                    </a>
+                                                </div>
+        
+            </div>
+
+        <div menuItemName="Choose Currency" class="panel card card-sidebar mb-3 panel-sidebar">
+        <div class="panel-heading card-header">
+            <h3 class="panel-title">
+                                    <i class="fas fa-plus"></i>&nbsp;
+                
+                Choose Currency
+
+                
+                <i class="fas fa-chevron-up card-minimise panel-minimise pull-right float-right"></i>
+            </h3>
+        </div>
+
+                    <div class="panel-body card-body collapsable-card-body">
+                <form method="post" action="/store/cmin2-premium-kvm-vps-seattle">
+<input type="hidden" name="token" value="871a4885ab1c471c6509031ae8924d947d779866" />
+    <select name="currency" onchange="submit()" class="form-control"><option value="1" selected>USD</option><option value="7">AUD</option><option value="10">CAD</option><option value="9">EUR</option><option value="6">GBP</option>    </select>
+</form>
+            </div>
+        
+        
+            </div>
+
+            </div>
+        <div class="cart-body">
+
+            <div class="header-lined">
+                <h1 class="font-size-36">
+                                            AS9929-CMIN2 Premium KVM VPS - Seattle
+                                    </h1>
+                            </div>
+            
+            <div class="sidebar-collapsed">
+
+            <div class="panel card panel-default">
+                <div class="m-0 panel-heading card-header">
+        <h3 class="panel-title">
+                            <i class="fas fa-shopping-cart"></i>&nbsp;
+            
+            Categories
+
+                    </h3>
+    </div>
+
+    <div class="panel-body card-body">
+        <form role="form">
+            <select class="form-control custom-select" onchange="selectChangeNavigate(this)">
+                                                    <option menuItemName="Premium Minecraft Plans" value="/store/premium-minecraft-plans" class="list-group-item" >
+                        Premium Minecraft Plans
+
+                                            </option>
+                                                        <option menuItemName="Budget Minecraft Plans" value="/store/budget-minecraft-plans" class="list-group-item" >
+                        Budget Minecraft Plans
+
+                                            </option>
+                                                        <option menuItemName="DDoS Protected Dallas Web Hosting" value="/store/ddos-protected-dallas-web-hosting" class="list-group-item" >
+                        DDoS Protected Dallas Web Hosting
+
+                                            </option>
+                                                        <option menuItemName="DDOS Protection" value="/store/ddos-protection" class="list-group-item" >
+                        DDOS Protection
+
+                                            </option>
+                                                        <option menuItemName="Seattle - Rapid Deploy Dedicated Servers (China Optimised)" value="/store/seattle-rapid-deploy-dedicated-servers-china-optimised" class="list-group-item" >
+                        Seattle - Rapid Deploy Dedicated Servers (China Optimised)
+
+                                            </option>
+                                                        <option menuItemName="DDoS Protected Seattle Dedicated Servers - China Optimised" value="/store/ddos-protected-seattle-dedicated-servers-china-optimised" class="list-group-item" >
+                        DDoS Protected Seattle Dedicated Servers - China Optimised
+
+                                            </option>
+                                                        <option menuItemName="DDoS Protected Seattle Colocation" value="/store/ddos-protected-seattle-colocation" class="list-group-item" >
+                        DDoS Protected Seattle Colocation
+
+                                            </option>
+                                                        <option menuItemName="Seattle - Additional Non DDoS Protected IPs (Dedicated Servers)" value="/store/seattle-additional-non-ddos-protected-ips-dedicated-servers" class="list-group-item" >
+                        Seattle - Additional Non DDoS Protected IPs (Dedicated Servers)
+
+                                            </option>
+                                                        <option menuItemName="Seattle - Additional 20Gb/s Protected IPs  (Dedicated Servers)" value="/store/seattle-additional-20gbs-protected-ips-dedicated-servers" class="list-group-item" >
+                        Seattle - Additional 20Gb/s Protected IPs  (Dedicated Servers)
+
+                                            </option>
+                                                        <option menuItemName="Seattle - Additional 200Gb/s Protected IPs (Dedicated Servers)" value="/store/seattle-additional-200gbs-protected-ips-dedicated-servers" class="list-group-item" >
+                        Seattle - Additional 200Gb/s Protected IPs (Dedicated Servers)
+
+                                            </option>
+                                                        <option menuItemName="AS9929-CMIN2 Premium KVM VPS - Seattle" value="/store/cmin2-premium-kvm-vps-seattle" class="list-group-item" selected="selected">
+                        AS9929-CMIN2 Premium KVM VPS - Seattle
+
+                                            </option>
+                                                                                                    <option menuItemName="China Optimised Premium KVM VPS - Seattle" value="/store/ddos-protected-ssd-premium-kvm-vps-seattle" class="list-group-item" >
+                        China Optimised Premium KVM VPS - Seattle
+
+                                            </option>
+                                                        <option menuItemName="DDoS Protected SSD E5 KVM VPS - Seattle" value="/store/ddos-protected-ssd-e5-kvm-vps-seattle" class="list-group-item" >
+                        DDoS Protected SSD E5 KVM VPS - Seattle
+
+                                            </option>
+                                                        <option menuItemName="DDoS Protected SSD E5 KVM VPS - Dallas" value="/store/ddos-protected-ssd-e5-kvm-vps-dallas" class="list-group-item" >
+                        DDoS Protected SSD E5 KVM VPS - Dallas
+
+                                            </option>
+                                                        <option menuItemName="DDoS Protected SSD Premium KVM VPS - Dallas" value="/store/dallas-premium-vps" class="list-group-item" >
+                        DDoS Protected SSD Premium KVM VPS - Dallas
+
+                                            </option>
+                                                        <option menuItemName="Storage KVM VPS - Dallas" value="/store/storage-kvm-vps-dallas" class="list-group-item" >
+                        Storage KVM VPS - Dallas
+
+                                            </option>
+                                                        <option menuItemName="DDoS Protected SSD Premium KVM VPS - Ashburn" value="/store/ddos-protected-ssd-premium-kvm-vps-ashburn" class="list-group-item" >
+                        DDoS Protected SSD Premium KVM VPS - Ashburn
+
+                                            </option>
+                                                        <option menuItemName="Dallas - Rapid Deploy Dedicated Servers" value="/store/dallas-rapid-deploy-dedicated-servers" class="list-group-item" >
+                        Dallas - Rapid Deploy Dedicated Servers
+
+                                            </option>
+                                                        <option menuItemName="Dallas - Custom Dedicated Servers" value="/store/ddos-protected-dallas-dedicated-servers" class="list-group-item" >
+                        Dallas - Custom Dedicated Servers
+
+                                            </option>
+                                                        <option menuItemName="Dallas - Additional DDoS Protected IPs (Dedicated Servers)" value="/store/dallas-additional-ddos-protected-ips" class="list-group-item" >
+                        Dallas - Additional DDoS Protected IPs (Dedicated Servers)
+
+                                            </option>
+                                                        <option menuItemName="IP Transit and other services" value="/store/ip-transit-and-other-services" class="list-group-item" >
+                        IP Transit and other services
+
+                                            </option>
+                                                        <option menuItemName="Licenses" value="/store/licenses" class="list-group-item" >
+                        Licenses
+
+                                            </option>
+                                                                </select>
+        </form>
+    </div>
+
+            </div>
+            <div class="panel card panel-default">
+                <div class="m-0 panel-heading card-header">
+        <h3 class="panel-title">
+                            <i class="fas fa-plus"></i>&nbsp;
+            
+            Actions
+
+                    </h3>
+    </div>
+
+    <div class="panel-body card-body">
+        <form role="form">
+            <select class="form-control custom-select" onchange="selectChangeNavigate(this)">
+                                                    <option menuItemName="View Cart" value="/cart.php?a=view" class="list-group-item" >
+                        View Cart
+
+                                            </option>
+                                                                        <option value="" class="list-group-item" selected=""selected>- Choose Another Category -</option>
+                            </select>
+        </form>
+    </div>
+
+            </div>
+            <div class="panel card panel-default">
+                <div class="m-0 panel-heading card-header">
+        <h3 class="panel-title">
+                            <i class="fas fa-plus"></i>&nbsp;
+            
+            Choose Currency
+
+                    </h3>
+    </div>
+
+    <div class="panel-body card-body">
+        <form role="form">
+            <select class="form-control custom-select" onchange="selectChangeNavigate(this)">
+                                                                    <option value="" class="list-group-item" selected=""selected>- Choose Another Category -</option>
+                            </select>
+        </form>
+    </div>
+
+            </div>
+    
+            <div class="pull-right form-inline float-right">
+            <form method="post" action="/cart.php?gid=44">
+<input type="hidden" name="token" value="871a4885ab1c471c6509031ae8924d947d779866" />
+                <select name="currency" onchange="submit()" class="form-control">
+                    <option value="">Choose Currency</option>
+                                            <option value="1" selected>USD</option>
+                                            <option value="6">GBP</option>
+                                            <option value="7">AUD</option>
+                                            <option value="9">EUR</option>
+                                            <option value="10">CAD</option>
+                                    </select>
+            </form>
+        </div>
+    
+</div>
+
+            <div class="products" id="products">
+                <div class="row row-eq-height">
+                                                                <div class="col-md-6">
+                        <div class="product clearfix" id="product426">
+                            <header>
+                                <span id="product426-name">4096MB SEAKVM AS9929-CMIN2</span>
+                                                                    <span class="qty">
+                                            0 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                              <strong>4096MB</strong> DDR5 RAM<br /><strong>4</strong> CPU vCores (<strong>4.5GHz AMD Ryzen 7950X</strong>)<br /><strong>100GB</strong> Raid <strong>NVMe</strong> SSD Storage<br /><strong>2TB</strong> bandwidth @ <strong>200Mb/s <a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">AS9929-CMIN2 out</a></strong> and <strong>10Gb/s in</strong> (speed limited to 1Mb/s after allocation used)<br /><strong><a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">China optimised</a> bandwidth</strong><br /><strong>1</strong> IPv4, <strong>/64</strong> IPv6<br /><strong>20Gb/s</strong> TCP DDoS Protection, <strong>200Gb/s</strong> upgrade available<br /><strong>Seattle, Washington</strong>, US<br /><strong>Virtfusion</strong> Control Panel<br /><strong>Unmanaged</strong><br />Looking Glass - <a href="https://lg.sea.cmin2.spartanhost.net/">click here</a>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product426-price">
+                                                                                                                        Starting from
+                                            <br />
+                                                                                <span class="price">$24.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/cmin2-premium-kvm-vps-seattle/4096mb-seakvm-cmin2" class="btn btn-success btn-sm btn-order-now" id="product426-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product427">
+                            <header>
+                                <span id="product427-name">6144MB SEAKVM AS9929-CMIN2</span>
+                                                                    <span class="qty">
+                                            0 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                              <strong>6144MB</strong> DDR5 RAM<br /><strong>4</strong> CPU vCores (<strong>4.5GHz AMD Ryzen 7950X</strong>)<br /><strong>150GB</strong> Raid <strong>NVMe</strong> SSD Storage<br /><strong>3TB</strong> bandwidth @ <strong>300Mb/s<a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html"> AS9929-CMIN2 out</a></strong> and <strong>10Gb/s in</strong> (speed limited to 1Mb/s after allocation used)<br /><strong><a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">China optimised</a> bandwidth</strong><br /><strong>1</strong> IPv4, <strong>/64</strong> IPv6<br /><strong>20Gb/s</strong> TCP DDoS Protection, <strong>200Gb/s</strong> upgrade available<br /><strong>Seattle, Washington</strong>, US<br /><strong>Virtfusion</strong> Control Panel<br /><strong>Unmanaged</strong><br />Looking Glass - <a href="https://lg.sea.cmin2.spartanhost.net/">click here</a>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product427-price">
+                                                                                                                        Starting from
+                                            <br />
+                                                                                <span class="price">$36.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/cmin2-premium-kvm-vps-seattle/6144mb-seakvm-cmin2" class="btn btn-success btn-sm btn-order-now" id="product427-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product428">
+                            <header>
+                                <span id="product428-name">8192MB SEAKVM AS9929-CMIN2</span>
+                                                                    <span class="qty">
+                                            0 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                              <strong>8192MB</strong> DDR5 RAM<br /><strong>5</strong> CPU vCores (<strong>4.5GHz AMD Ryzen 7950X</strong>)<br /><strong>200GB</strong> Raid <strong>NVMe</strong> SSD Storage<br /><strong>4TB</strong> bandwidth @ <strong>400Mb/s<a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html"> AS9929-CMIN2 out</a></strong> and <strong>10Gb/s in</strong> (speed limited to 1Mb/s after allocation used)<br /><strong><a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">China optimised</a> bandwidth</strong><br /><strong>1</strong> IPv4, <strong>/64</strong> IPv6<br /><strong>20Gb/s</strong> TCP DDoS Protection, <strong>200Gb/s</strong> upgrade available<br /><strong>Seattle, Washington</strong>, US<br /><strong>Virtfusion</strong> Control Panel<br /><strong>Unmanaged</strong><br />Looking Glass - <a href="https://lg.sea.cmin2.spartanhost.net/">click here</a>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product428-price">
+                                                                                                                        Starting from
+                                            <br />
+                                                                                <span class="price">$48.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/cmin2-premium-kvm-vps-seattle/8192mb-seakvm-cmin2" class="btn btn-success btn-sm btn-order-now" id="product428-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product429">
+                            <header>
+                                <span id="product429-name">10240MB SEAKVM AS9929-CMIN2</span>
+                                                                    <span class="qty">
+                                            0 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                              <strong>10240MB</strong> DDR5 RAM<br /><strong>5</strong> CPU vCores (<strong>4.5GHz AMD Ryzen 7950X</strong>)<br /><strong>250GB</strong> Raid <strong>NVMe</strong> SSD Storage<br /><strong>5TB</strong> bandwidth @ <strong>500Mb/s <a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">AS9929-CMIN2 out</a></strong> and <strong>10Gb/s in</strong> (speed limited to 1Mb/s after allocation used)<br /><strong><a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">China optimised</a> bandwidth</strong><br /><strong>1</strong> IPv4, <strong>/64</strong> IPv6<br /><strong>20Gb/s</strong> TCP DDoS Protection, <strong>200Gb/s</strong> upgrade available<br /><strong>Seattle, Washington</strong>, US<br /><strong>Virtfusion</strong> Control Panel<br /><strong>Unmanaged</strong><br />Looking Glass - <a href="https://lg.sea.cmin2.spartanhost.net/">click here</a>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product429-price">
+                                                                                                                        Starting from
+                                            <br />
+                                                                                <span class="price">$60.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/cmin2-premium-kvm-vps-seattle/10240mb-seakvm-cmin2" class="btn btn-success btn-sm btn-order-now" id="product429-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product430">
+                            <header>
+                                <span id="product430-name">16384MB SEAKVM AS9929-CMIN2</span>
+                                                                    <span class="qty">
+                                            0 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                              <strong>16384MB</strong> DDR5 RAM<br /><strong>6</strong> CPU vCores (<strong>4.5GHz AMD Ryzen 7950X</strong>)<br /><strong>400GB</strong> Raid <strong>NVMe</strong> SSD Storage<br /><strong>8TB</strong> bandwidth @ <strong>800Mb/s <a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">AS9929-CMIN2 out</a></strong> and <strong>10Gb/s in</strong> (speed limited to 1Mb/s after allocation used)<br /><strong><a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">China optimised</a> bandwidth</strong><br /><strong>1</strong> IPv4, <strong>/64</strong> IPv6<br /><strong>20Gb/s</strong> TCP DDoS Protection, <strong>200Gb/s</strong> upgrade available<br /><strong>Seattle, Washington</strong>, US<br /><strong>Virtfusion</strong> Control Panel<br /><strong>Unmanaged</strong><br />Looking Glass - <a href="https://lg.sea.cmin2.spartanhost.net/">click here</a>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product430-price">
+                                                                                                                        Starting from
+                                            <br />
+                                                                                <span class="price">$96.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/cmin2-premium-kvm-vps-seattle/16384mb-seakvm-cmin2" class="btn btn-success btn-sm btn-order-now" id="product430-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product431">
+                            <header>
+                                <span id="product431-name">20480MB SEAKVM AS9929-CMIN2</span>
+                                                                    <span class="qty">
+                                            0 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                              <strong>20480MB</strong> DDR5 RAM<br /><strong>6</strong> CPU vCores (<strong>4.5GHz AMD Ryzen 7950X</strong>)<br /><strong>500GB</strong> Raid <strong>NVMe</strong> SSD Storage<br /><strong>10TB</strong> bandwidth @ <strong>1Gb/s <a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">AS9929-CMIN2 out</a></strong> and <strong>10Gb/s in</strong> (speed limited to 1Mb/s after allocation used)<br /><strong><a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">China optimised</a> bandwidth</strong><br /><strong>1</strong> IPv4, <strong>/64</strong> IPv6<br /><strong>20Gb/s</strong> TCP DDoS Protection, <strong>200Gb/s</strong> upgrade available<br /><strong>Seattle, Washington</strong>, US<br /><strong>Virtfusion</strong> Control Panel<br /><strong>Unmanaged</strong><br />Looking Glass - <a href="https://lg.sea.cmin2.spartanhost.net/">click here</a>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product431-price">
+                                                                                                                        Starting from
+                                            <br />
+                                                                                <span class="price">$120.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/cmin2-premium-kvm-vps-seattle/20480mb-seakvm-cmin2" class="btn btn-success btn-sm btn-order-now" id="product431-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product432">
+                            <header>
+                                <span id="product432-name">24576MB SEAKVM AS9929-CMIN2</span>
+                                                                    <span class="qty">
+                                            0 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                              <strong>24576MB</strong> DDR5 RAM<br /><strong>7</strong> CPU vCores (<strong>4.5GHz AMD Ryzen 7950X</strong>)<br /><strong>600GB</strong> Raid <strong>NVMe</strong> SSD Storage<br /><strong>12TB</strong> bandwidth @ <strong>1Gb/s <a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">AS9929-CMIN2 out</a></strong> and <strong>10Gb/s in</strong> (speed limited to 1Mb/s after allocation used)<br /><strong><a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">China optimised</a> bandwidth</strong><br /><strong>1</strong> IPv4, <strong>/64</strong> IPv6<br /><strong>20Gb/s</strong> TCP DDoS Protection, <strong>200Gb/s</strong> upgrade available<br /><strong>Seattle, Washington</strong>, US<br /><strong>Virtfusion</strong> Control Panel<br /><strong>Unmanaged</strong><br />Looking Glass - <a href="https://lg.sea.cmin2.spartanhost.net/">click here</a>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product432-price">
+                                                                                                                        Starting from
+                                            <br />
+                                                                                <span class="price">$144.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/cmin2-premium-kvm-vps-seattle/24576mb-seakvm-cmin2" class="btn btn-success btn-sm btn-order-now" id="product432-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                                                                    <div class="col-md-6">
+                        <div class="product clearfix" id="product433">
+                            <header>
+                                <span id="product433-name">32768MB SEAKVM AS9929-CMIN2</span>
+                                                                    <span class="qty">
+                                            0 Available
+                                        </span>
+                                                            </header>
+                            <div class="product-desc">
+                              <strong>32768MB</strong> DDR5 RAM<br /><strong>8</strong> CPU vCores (<strong>4.5GHz AMD Ryzen 7950X</strong>)<br /><strong>800GB</strong> Raid <strong>NVMe</strong> SSD Storage<br /><strong>16TB</strong> bandwidth @ <strong>1Gb/s <a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">AS9929-CMIN2 out</a></strong> and <strong>10Gb/s in</strong> (speed limited to 1Mb/s after allocation used)<br /><strong><a href="https://billing.spartanhost.net/knowledgebase/54/Seattle-China-optimised-network.html">China optimised</a> bandwidth</strong><br /><strong>1</strong> IPv4, <strong>/64</strong> IPv6<br /><strong>20Gb/s</strong> TCP DDoS Protection, <strong>200Gb/s</strong> upgrade available<br /><strong>Seattle, Washington</strong>, US<br /><strong>Virtfusion</strong> Control Panel<br /><strong>Unmanaged</strong><br />Looking Glass - <a href="https://lg.sea.cmin2.spartanhost.net/">click here</a>
+                            </div>
+                            <footer>
+                                <div class="product-pricing" id="product433-price">
+                                                                                                                        Starting from
+                                            <br />
+                                                                                <span class="price">$192.00 USD</span>
+                                        <br />
+                                                                                    Monthly
+                                                                                <br>
+                                                                                                            </div>
+                                <a href="/store/cmin2-premium-kvm-vps-seattle/32768mb-seakvm-cmin2" class="btn btn-success btn-sm btn-order-now" id="product433-order-button">
+                                    <i class="fas fa-shopping-cart"></i>
+                                    Order Now
+                                </a>
+                            </footer>
+                        </div>
+                    </div>
+                                    </div>
+                <div class="row row-eq-height">
+                                                        </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="recommendationsModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="float-left pull-left">
+                                            Added to Cart
+                                    </h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <div class="clearfix"></div>
+            </div>
+            <div class="modal-body">
+                <div class="product-recommendations-container">
+    <div class="product-recommendations">
+                    <p>Based on this product, we recommend:</p>
+                    </div>
+</div>
+            </div>
+            <div class="modal-footer">
+                <a class="btn btn-primary" href="#" id="btnContinueRecommendationsModal" data-dismiss="modal" role="button">
+                    <span class="w-hidden hidden"><i class="fas fa-spinner fa-spin"></i>&nbsp;</span>Continue
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="product-recommendation clonable w-hidden hidden">
+        <div class="header">
+            <div class="cta">
+                <div class="price">
+                    <span class="w-hidden hidden">FREE!</span>
+                    <span class="breakdown-price"></span>
+                    <span class="setup-fee"><small>&nbsp;Setup Fee</small></span>
+                </div>
+                <button type="button" class="btn btn-sm btn-add">
+                    <span class="text">Add to Cart</span>
+                    <span class="arrow"><i class="fas fa-chevron-right"></i></span>
+                </button>
+            </div>
+            <div class="expander">
+                <i class="fas fa-chevron-right rotate" data-toggle="tooltip" data-placement="right" title="Click to learn more."></i>
+            </div>
+            <div class="content">
+                <div class="headline truncate"></div>
+                <div class="tagline truncate">
+                    A description (tagline) is not available for this product.
+                </div>
+            </div>
+        </div>
+        <div class="body clearfix"><p></p></div>
+    </div>
+</div>
+
+
+</div>
+
+</div>
+<div class="clearfix"></div>
+</div>
+</div>
+</section>
+
+
+
+<!-- Start of LiveChat (www.livechatinc.com) code -->
+<script type="text/javascript">
+  window.__lc = window.__lc || {};
+  window.__lc.license = 3864611;
+  (function() {
+    var lc = document.createElement('script'); lc.type = 'text/javascript'; lc.async = true;
+    lc.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + 'cdn.livechatinc.com/tracking.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(lc, s);
+  })();
+</script>
+<noscript>
+<a href="https://www.livechatinc.com/chat-with/3864611/" rel="nofollow">Chat with us</a>,
+powered by <a href="https://www.livechatinc.com/?welcome" rel="noopener nofollow" target="_blank">LiveChat</a>
+</noscript>
+<!-- End of LiveChat code -->
+
+<!--Google Analytics-->
+<script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-49048240-1', 'auto');
+  ga('send', 'pageview');
+
+</script>
+
+
+<section class="support-footer">
+	<div class="container">
+		<div class="rows">
+			<h3>Connect with us!</h3>
+			<ul>
+				<li class="phone-item">
+					<img src="https://billing.spartanhost.net/templates/spartan/images/support-phone.png" alt="">
+					<div>
+						<a href="tel:16029105858">US +1 (602) 910-5858</a>
+						<a href="tel:442895813535">UK +44 (2895) 813535</a>
+					</div>
+				</li>
+				<li>
+					<a href="/cdn-cgi/l/email-protection#d5a6b4b9b0a695a6a5b4a7a1b4bbbdbaa6a1fbbbb0a1"><img src="https://billing.spartanhost.net/templates/spartan/images/support-mail.png" alt="" /><span class="__cf_email__" data-cfemail="d8abb9b4bdab98aba8b9aaacb9b6b0b7abacf6b6bdac">[email&#160;protected]</span></a>
+				</li>
+				<li>
+					<a href="https://www.facebook.com/SpartanHost" target="_blank"><img src="https://billing.spartanhost.net/templates/spartan/images/support-fb.png" alt="" />Facebook</a>
+				</li>
+				<li>
+					<a href="https://twitter.com/SpartanHost" target="_blank"><img src="https://billing.spartanhost.net/templates/spartan/images/support-twitter.png" alt="" />Twitter</a>
+				</li>
+			</ul>
+		</div>
+	</div>
+</section>
+
+
+<footer class="foot">
+	<div class="container">
+		<div class="rows">
+			<div class="foot-info">
+				<a href="https://billing.spartanhost.net/"><img src="https://billing.spartanhost.net/templates/spartan/images/footer-logo.png" alt="Spartan Host" />
+				</a>
+				<p>© Copyright 2013-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/JavaScript">document.write(new Date().getFullYear());</script> Spartan Host Ltd.</p>
+				<a href="https://spartanhost.org/tos">Terms of Service</a> &nbsp;|&nbsp;
+				<!--<a href="privacy">Privacy</a> &nbsp;|&nbsp;-->
+				<a href="/cdn-cgi/l/email-protection#254447505640655655445751444b4d4a56510b4b4051">Abuse</a>
+
+                <div class="list-inline-item language-changer-btn">
+            <button type="button" class="btn" data-toggle="modal" data-target="#modalChooseLanguage">
+                <div class="d-inline-block align-middle">
+                    <div class="iti-flag 001"></div>
+                </div>
+                English
+                /
+                $
+                USD
+            </button>
+        </div>
+        
+			</div>
+
+			<div class="foot-links">
+				<h4>Services</h4>
+				<ul>
+					<li><a href="https://spartanhost.org/minecraft">Minecraft</a>
+					</li>
+					<li><a href="https://spartanhost.org/vps">Virtual Servers</a>
+					</li>
+					<li><a href="https://spartanhost.org/webhosting">Web Hosting</a>
+					</li>
+					<li><a href="https://spartanhost.org/dedicated">Dedicated Servers</a>
+					</li>
+					<li><a href="https://spartanhost.org/colocation">Colocation</a>
+					</li>
+					<li><a href="https://billing.spartanhost.net/cart.php?gid=7">DDoS Protection</a>
+					</li>
+				</ul>
+			</div>
+
+			<div class="foot-links">
+				<h4>Company</h4>
+				<ul>
+					<li><a href="https://spartanhost.org/about">About Us</a>
+					</li>
+					<li><a href="https://spartanhost.org/careers">Careers</a>
+					</li>
+					<li><a href="https://spartanhost.org/dc-seattle">Seattle Data Centre</a>
+					</li>
+					<li><a href="https://spartanhost.org/dc-dallas">Dallas Data Centre</a>
+					</li>
+					<li><a href="https://billing.spartanhost.net/knowledgebase.php?action=displayarticle&id=29">Affiliates</a>
+					</li>
+				</ul>
+			</div>
+
+			<div class="foot-links">
+				<h4>Support</h4>
+				<ul>
+					<li><a href="https://billing.spartanhost.net/">Support Centre</a>
+					</li>
+					<li><a href="https://billing.spartanhost.net/submitticket.php">Contact Us</a>
+					</li>
+					<li><a href="http://billing.spartanhost.net/knowledgebase.php">Knowledge Base</a>
+					</li>
+                                        <li><a href="https://spartanhost.org/faq">FAQ</a>
+					</li>
+					<li><a href="https://status.spartanhost.net" target="blank">System Status</a>
+					</li>
+					<li><a href="account">Client Login</a>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+</footer>
+
+
+<div id="fullpage-overlay" class="w-hidden">
+<div class="outer-wrapper">
+<div class="inner-wrapper">
+<img src="/assets/img/overlay-spinner.svg" alt="">
+<br>
+<span class="msg"></span>
+</div>
+</div>
+</div>
+
+<div class="modal system-modal fade" id="modalAjax" tabindex="-1" role="dialog" aria-hidden="true">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<h5 class="modal-title"></h5>
+<button type="button" class="close" data-dismiss="modal">
+    <span aria-hidden="true">&times;</span>
+    <span class="sr-only">Close</span>
+</button>
+</div>
+<div class="modal-body">
+Loading...
+</div>
+<div class="modal-footer">
+<div class="float-left loader">
+    <i class="fas fa-circle-notch fa-spin"></i>
+    Loading...
+</div>
+<button type="button" class="btn btn-default" data-dismiss="modal">
+    Close
+</button>
+<button type="button" class="btn btn-primary modal-submit">
+    Submit
+</button>
+</div>
+</div>
+</div>
+</div>
+
+<form method="get" action="/store/cmin2-premium-kvm-vps-seattle?">
+<div class="modal modal-localisation" id="modalChooseLanguage" tabindex="-1" role="dialog">
+<div class="modal-dialog modal-lg" role="document">
+<div class="modal-content">
+<div class="modal-body">
+    <button type="button" class="close text-light" data-dismiss="modal" aria-label="Close">
+        <span aria-hidden="true">&times;</span>
+    </button>
+
+            <h5 class="h5 pt-5 pb-3">Choose language</h5>
+        <div class="row item-selector">
+        <input type="hidden" name="language" value="">
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="arabic">
+                        العربية
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="azerbaijani">
+                        Azerbaijani
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="catalan">
+                        Català
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="chinese">
+                        中文
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="croatian">
+                        Hrvatski
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="czech">
+                        Čeština
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="danish">
+                        Dansk
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="dutch">
+                        Nederlands
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item active" data-value="english">
+                        English
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="estonian">
+                        Estonian
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="farsi">
+                        Persian
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="french">
+                        Français
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="german">
+                        Deutsch
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="hebrew">
+                        עברית
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="hungarian">
+                        Magyar
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="italian">
+                        Italiano
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="macedonian">
+                        Macedonian
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="norwegian">
+                        Norwegian
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="portuguese-br">
+                        Português
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="portuguese-pt">
+                        Português
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="romanian">
+                        Română
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="russian">
+                        Русский
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="spanish">
+                        Español
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="swedish">
+                        Svenska
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="turkish">
+                        Türkçe
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="ukranian">
+                        Українська
+                    </a>
+                </div>
+                    </div>
+                <p class="h5 pt-5 pb-3">Choose Currency</p>
+        <div class="row item-selector">
+            <input type="hidden" name="currency" value="">
+                            <div class="col-4">
+                    <a href="#" class="item active" data-value="1">
+                        $ USD
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="6">
+                        £ GBP
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="7">
+                        $ AUD
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="9">
+                        € EUR
+                    </a>
+                </div>
+                            <div class="col-4">
+                    <a href="#" class="item" data-value="10">
+                        $ CAD
+                    </a>
+                </div>
+                    </div>
+    </div>
+<div class="modal-footer">
+    <button type="submit" class="btn btn-default">Apply</button>
+</div>
+</div>
+</div>
+</div>
+</form>
+
+
+<form action="#" id="frmGeneratePassword">
+    <div class="modal fade" id="modalGeneratePassword">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h4 class="modal-title">
+                        Generate Password
+                    </h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-danger w-hidden" id="generatePwLengthError">
+                        Please enter a number between 8 and 64 for the password length
+                    </div>
+                    <div class="form-group row">
+                        <label for="generatePwLength" class="col-sm-4 col-form-label">Password Length</label>
+                        <div class="col-sm-8">
+                            <input type="number" min="8" max="64" value="12" step="1" class="form-control input-inline input-inline-100" id="inputGeneratePasswordLength">
+                        </div>
+                    </div>
+                    <div class="form-group row">
+                        <label for="generatePwOutput" class="col-sm-4 col-form-label">Generated Password</label>
+                        <div class="col-sm-8">
+                            <input type="text" class="form-control" id="inputGeneratePasswordOutput">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-sm-8 offset-sm-4">
+                            <button type="submit" class="btn btn-default btn-sm">
+                                <i class="fas fa-plus fa-fw"></i>
+                                Generate new password
+                            </button>
+                            <button type="button" class="btn btn-default btn-sm copy-to-clipboard" data-clipboard-target="#inputGeneratePasswordOutput">
+                                <img src="/assets/img/clippy.svg" alt="Copy to clipboard" width="15">
+                                Copy
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                        Close
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btnGeneratePasswordInsert" data-clipboard-target="#inputGeneratePasswordOutput">
+                        Copy to clipboard and Insert
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script type="text/javascript">
+  var __lc = {};
+  __lc.license = 3864611;
+
+  (function() {
+    var lc = document.createElement('script'); lc.type = 'text/javascript'; lc.async = true;
+    lc.src = ('https:' == document.location.protocol ? 'https://' : 'http://') + 'cdn.livechatinc.com/tracking.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(lc, s);
+  })();
+</script>
+
+
+</body>
+</html>

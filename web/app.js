@@ -8,6 +8,9 @@ const providerFilter = document.getElementById("provider-filter");
 const outcomeFilter = document.getElementById("outcome-filter");
 const regionFilter = document.getElementById("region-filter");
 const currencyFilter = document.getElementById("currency-filter");
+// 月化价格统一 CNY 展示的参考汇率（2026-08-11 快照，中间价近似值；
+// 仅用于展示换算，不改原始金额）
+const CNY_RATES = { USD: 7.25, EUR: 7.9 };
 const billingFilter = document.getElementById("billing-filter");
 const availabilityFilter = document.getElementById("availability-filter");
 const routeFilter = document.getElementById("route-filter");
@@ -36,7 +39,7 @@ const SORT_FIELDS = [
   ["updated", "更新时间"], ["provider", "服务商"], ["plan_name", "套餐"],
   ["region", "地区"], ["cpu", "CPU 核数"], ["ram_gb", "内存"],
   ["storage_gb", "硬盘大小"], ["disk_type", "硬盘类型"],
-  ["amount", "原始金额"], ["monthly_amount", "月化"], ["value_score", "性价比"],
+  ["amount", "原始金额"], ["monthly_amount", "月化(CNY)"], ["value_score", "性价比"],
   ["reliability", "可靠性"], ["oversell", "超售"], ["availability", "库存"],
 ];
 
@@ -225,7 +228,15 @@ function render() {
       plan.replaceChildren(link);
     }
     const raw = row.amount === null ? null : `${row.amount} ${row.currency} / ${row.billing_period}`;
-    const monthly = row.monthly_amount === null ? null : `${row.monthly_amount} ${row.currency}`;
+    // 月化价格统一按 CNY 展示（参考汇率，2026-08-11 快照；EUR/USD 为
+    // 页面等值价时金额数值一致，汇率取当月中间价近似值）
+    const monthlyCny = (() => {
+      if (row.monthly_amount === null) return null;
+      const rate = CNY_RATES[row.currency];
+      if (rate === undefined) return `${row.monthly_amount} ${row.currency}`;
+      return `¥${(row.monthly_amount * rate).toFixed(2)}`;
+    })();
+    const monthly = monthlyCny;
     const reason = row.rejection_reason || row.block_reason || "";
     const diag = row.browser_diag || "";
     const reasonEl = document.createElement("td");

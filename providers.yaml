@@ -256,27 +256,28 @@ targets:
     provider: LayerStack
     plan_name: R108
     plan_tokens: [R108, 4GiB, 2 vCPU, 150GiB]
-    url: https://www.layerstack.com/en/printable-cloud-servers/hk/standard
+    url: https://www.layerstack.com/en/pricing#list-plan-cloudserver-general
     region: HK
     provider_claimed_routes: [CN2 China Direct Route]
     reliability: 7
     oversell: low
     reliability_note: 云平台正规，香港 CN2 直连，价格偏高
     specs: {cpu: 2, ram_gb: 4, storage_gb: 150, bandwidth_gbps: 1}
-  - id: layerstack-r111
+  - id: layerstack-r208
     <<: *target_defaults
     priority: 135
     expected_domains: [layerstack.com]
     expected_currencies: [USD]
     provider: LayerStack
-    plan_name: R111
-    plan_tokens: [R111, 8GiB, 4 vCPU, 300GiB]
-    url: https://www.layerstack.com/en/printable-cloud-servers/jp/standard
+    plan_name: R208
+    plan_tokens: [R208, 12GiB, 4 vCPU, 250GiB]
+    url: https://www.layerstack.com/en/pricing#list-plan-cloudserver-general-jp
     region: JP
     provider_claimed_routes: [CN2 China Direct Route]
     reliability: 7
     oversell: low
-    specs: {cpu: 4, ram_gb: 8, storage_gb: 300, bandwidth_gbps: 2}
+    reliability_note: 原 R111 档已下架，适配现售 R208（4vCPU/12GiB/250GiB）
+    specs: {cpu: 4, ram_gb: 12, storage_gb: 250, bandwidth_gbps: 2}
   # ============ LisaHost ============
   - id: lisahost-us-9929-annual
     <<: *target_defaults
@@ -400,21 +401,21 @@ targets:
     oversell: none
     specs: {cpu: 1, ram_gb: 1, storage_gb: 20, bandwidth_gbps: 0.3}
   # ============ SpartanHost（新）============
-  - id: spartanhost-la-cn2
+  - id: spartanhost-sea-9929-cmin2
     <<: *target_defaults
     priority: 190
-    expected_domains: [spartantech.com]
+    expected_domains: [spartanhost.net]
     expected_currencies: [USD]
     provider: SpartanHost
-    plan_name: 洛杉矶 CN2 GIA
-    plan_tokens: [CN2 GIA, 洛杉矶]
-    url: https://billing.spartantech.com/cart.php?gid=1
+    plan_name: SEAKVM AS9929-CMIN2 6144MB
+    plan_tokens: [SEAKVM, AS9929-CMIN2, 6144MB]
+    url: https://billing.spartanhost.net/store/cmin2-premium-kvm-vps-seattle
     region: US
-    provider_claimed_routes: [CN2 GIA]
+    provider_claimed_routes: [AS9929, CMIN2]
     reliability: 8
     oversell: low
-    reliability_note: 洛杉矶 CN2 GIA 口碑好，工单响应快
-    specs: {cpu: 1, ram_gb: 1, storage_gb: 10, bandwidth_gbps: 0.3}
+    reliability_note: 原洛杉矶 CN2 GIA 已下架，适配现售西雅图 AS9929/CMIN2 中国优化线（域名 spartantech.com 已废弃→SSL 报错根因）
+    specs: {cpu: 4, ram_gb: 6, storage_gb: 150, bandwidth_gbps: 0.3}
   # ============ ion（新）============
   - id: ion-la-cn2
     <<: *target_defaults

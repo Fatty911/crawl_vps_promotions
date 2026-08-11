@@ -78,7 +78,23 @@ main { padding: 1rem 1.25rem; display: grid; gap: 1.25rem; }
 .cards h2 { margin: 0 0 .35rem; font-size: .95rem; }
 .cards p { margin: .2rem 0; font-size: .85rem; color: var(--muted); }
 .cards .card-meta { color: var(--ink); }
-.table-wrap { overflow-x: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+.table-wrap {
+  overflow-x: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  /* 横向滚动条默认隐藏，鼠标进入表格范围时浮现（2026-08-11 用户要求：
+     不要等竖向滚到底部才看到横向滚动条） */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color .2s ease;
+}
+.table-wrap:hover { scrollbar-color: var(--line) transparent; }
+.table-wrap::-webkit-scrollbar { height: 8px; }
+.table-wrap::-webkit-scrollbar-track { background: transparent; }
+.table-wrap::-webkit-scrollbar-thumb { background: transparent; border-radius: 4px; }
+.table-wrap:hover::-webkit-scrollbar-thumb { background: var(--line); }
+.table-wrap::-webkit-scrollbar-corner { background: transparent; }
 table { border-collapse: collapse; width: 100%; font-size: .85rem; }
 th, td { text-align: left; padding: .45rem .6rem; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th { background: #fafafa; position: sticky; top: 0; }

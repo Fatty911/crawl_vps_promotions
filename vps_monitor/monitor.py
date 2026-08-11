@@ -1140,6 +1140,7 @@ def _matches_target(text: str, target: PlanTarget) -> bool:
 
 def _parse_price(text: str) -> tuple[float, str, str] | None:
     patterns = (
+        (re.compile(r"US\$\s*([0-9]+(?:\.[0-9]{1,2})?)", re.I), "USD"),
         (re.compile(r"\$\s*([0-9]+(?:\.[0-9]{1,2})?)\s*(?:USD)?", re.I), "USD"),
         (re.compile(r"([0-9]+(?:\.[0-9]{1,2})?)\s*USD", re.I), "USD"),
         (re.compile(r"(?:¥|￥|RMB\s*)([0-9]+(?:\.[0-9]{1,2})?)", re.I), "CNY"),
@@ -1161,6 +1162,7 @@ def _parse_bound_price_period(
     text: str,
 ) -> tuple[float, str, str, str] | None:
     patterns = (
+        (re.compile(r"US\$\s*([0-9]+(?:\.[0-9]{1,2})?)", re.I), "USD"),
         (re.compile(r"\$\s*([0-9]+(?:\.[0-9]{1,2})?)\s*(?:USD)?", re.I), "USD"),
         (re.compile(r"([0-9]+(?:\.[0-9]{1,2})?)\s*USD", re.I), "USD"),
         (re.compile(r"(?:¥|￥|RMB\s*)([0-9]+(?:\.[0-9]{1,2})?)", re.I), "CNY"),
@@ -1193,7 +1195,7 @@ def _parse_period(text: str) -> str | None:
         return "quarterly"
     if any(word in lowered for word in ("annually", "annual", "yearly", "per year", "/year", "每年", "年付")):
         return "yearly"
-    if any(word in lowered for word in ("monthly", "per month", "/month", "/ month", "/mo", "/月", "每月", "月付")):
+    if any(word in lowered for word in ("monthly", "per month", "/month", "/ month", "/mo", "/mth", "/月", "每月", "月付")):
         return "monthly"
     return None
 
@@ -1232,6 +1234,11 @@ def _offer_from_text(
     availability = _parse_availability(text) or (
         "in_stock" if control_available or price_period is not None else None
     )
+    # Virtfusion storefronts render "0 Available" as a template placeholder
+    # while an enabled Order Now control is present (SpartanHost SEAKVM,
+    # observed 2026-08-11 — all 8 tiers show "0 Available" yet are orderable).
+    if availability == "out_of_stock" and control_available and re.search(r"\b0\s+available\b", text, re.I):
+        availability = "in_stock"
     offer_id = _offer_id(target, product_url or "")
     if price_period is None or availability is None or not product_url or not offer_id:
         return None
