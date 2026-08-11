@@ -14,6 +14,7 @@ const CNY_RATES = { USD: 7.25, EUR: 7.9 };
 const billingFilter = document.getElementById("billing-filter");
 const availabilityFilter = document.getElementById("availability-filter");
 const routeFilter = document.getElementById("route-filter");
+const optRamFilter = document.getElementById("opt-ram");
 const reliabilityFilter = document.getElementById("reliability-filter");
 const exportCsv = document.getElementById("export-csv");
 const sortRulesNode = document.getElementById("sort-rules");
@@ -47,6 +48,16 @@ const SORT_FIELDS = [
 const BEIJING_FAST_ROUTES = [
   "cn2 gia-e", "cn2 gia", "as9929", "cmin2", "cmi", "cug",
 ];
+
+// True when any claimed route is a Beijing-fast premium route (CN2 GIA /
+// AS9929 / CMIN2 / CMI / CUG — 中国优化精品线路，北京访问快).
+function hasFastRoute(routes) {
+  if (!routes || routes.length === 0) return false;
+  return routes.some((route) => {
+    const lower = String(route).toLowerCase();
+    return BEIJING_FAST_ROUTES.some((fast) => lower.includes(fast));
+  });
+}
 
 function setState(name, message) {
   stateNode.dataset.state = name;
@@ -118,10 +129,9 @@ function routeCell(routes) {
     const badge = document.createElement("span");
     badge.className = "route-badge";
     badge.textContent = route;
-    const lower = String(route).toLowerCase();
     // Beijing-fast premium routes get a highlight (CN2 GIA / AS9929 / CMIN2
     // / CMI / CUG / CN2 — 中国优化精品线路，北京访问快).
-    if (BEIJING_FAST_ROUTES.some((fast) => lower.includes(fast))) {
+    if (hasFastRoute([route])) {
       badge.classList.add("route-fast");
       badge.title = "北京访问快（中国优化精品线路）";
     }
@@ -211,6 +221,12 @@ function render() {
     (!billingFilter.value || row.billing_period === billingFilter.value) &&
     (!availabilityFilter.value || row.availability === availabilityFilter.value) &&
     (!routeFilter.value || (row.provider_claimed_routes || []).includes(routeFilter.value)) &&
+    // 默认筛选（2026-08-11 用户要求）：线路不含优化线路（CN2 GIA /
+    // AS9929 / CMIN2 / CMI / CUG）时，内存必须 ≥4GB；手动选择线路后
+    // 该默认约束自动失效（用户意图优先），也可取消勾选。
+    (routeFilter.value || !optRamFilter.checked ||
+      hasFastRoute(row.provider_claimed_routes) ||
+      Number(specValue(row, "ram_gb")) >= 4) &&
     (Number(row.reliability || 0) >= minReliability)
   );
   visible.sort(compareRows);
@@ -547,6 +563,7 @@ async function load() {
 [searchBox, providerFilter, outcomeFilter, regionFilter, currencyFilter, billingFilter,
   availabilityFilter, routeFilter, reliabilityFilter].forEach((node) =>
   node.addEventListener("input", render));
+optRamFilter.addEventListener("change", render);
 sortAdd.addEventListener("click", () => {
   if (sortRules.length >= 4) return;
   sortRules.push({field: "updated", dir: "desc"});

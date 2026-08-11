@@ -86,3 +86,19 @@ def test_pages_multi_level_sorting_like_excel():
     assert '"cug",\n];' in script  # no bare "cn2" in the fast list
     index = (WEB / "index.html").read_text(encoding="utf-8")
     assert index.count("</section>") == index.count("<section")  # no orphan close
+
+
+def test_opt_ram_default_filter():
+    """2026-08-11 用户要求：pages 默认筛选——线路不含优化线路
+    (CN2 GIA/AS9929/CMIN2/CMI/CUG) 时 RAM 必须 ≥4GB。
+    checkbox 默认勾选；手动选择线路后约束自动失效；可取消勾选。"""
+    index = (WEB / "index.html").read_text(encoding="utf-8")
+    script = (WEB / "app.js").read_text(encoding="utf-8")
+    assert 'id="opt-ram" type="checkbox" checked' in index
+    assert "无优化线路需内存≥4GB" in index
+    assert "function hasFastRoute" in script
+    assert 'optRamFilter.addEventListener("change", render)' in script
+    # 条件：routeFilter 有值 / 未勾选 / 有优化线路 / RAM>=4 任一成立即通过
+    assert "(routeFilter.value || !optRamFilter.checked ||" in script
+    assert "hasFastRoute(row.provider_claimed_routes)" in script
+    assert 'Number(specValue(row, "ram_gb")) >= 4' in script
