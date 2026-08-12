@@ -82,8 +82,8 @@ jobs:
           site = Path("site")
           assert (site / "index.html").read_text(encoding="utf-8").count('id="opt-ram"') == 1
           # 2026-08-11 用户要求：表格视图移除，卡片为唯一展示
-          assert 'id="status-body"' not in (site / "index.html").read_text(encoding="utf-8")
-          assert "card-specs" in (site / "app.js").read_text(encoding="utf-8")
+          assert 'id="cards"' not in (site / "index.html").read_text(encoding="utf-8")
+          assert "initHScroll" in (site / "app.js").read_text(encoding="utf-8")
           manifest = json.loads((site / "manifest.json").read_text(encoding="utf-8"))
           assert manifest.get("schema_version") == 4 and manifest.get("mode") == "live"
           assert (site / "data" / "status.json").exists()

@@ -1,7 +1,7 @@
 "use strict";
 
 const stateNode = document.getElementById("state");
-const cardsNode = document.getElementById("cards");
+const bodyNode = document.getElementById("status-body");
 const searchBox = document.getElementById("search-box");
 const providerFilter = document.getElementById("provider-filter");
 const outcomeFilter = document.getElementById("outcome-filter");
@@ -120,6 +120,12 @@ function safeOfferLink(row) {
   }
 }
 
+function cell(value) {
+  const node = document.createElement("td");
+  node.textContent = value === null || value === undefined || value === "" ? "—" : String(value);
+  return node;
+}
+
 function stars(score) {
   if (score === null || score === undefined || !Number.isFinite(Number(score))) return "—";
   const value = Number(score);
@@ -153,6 +159,28 @@ function diskLabel(row) {
   const size = gb === null ? "" : `${gb}GB`;
   if (type && size) return `${type} ${size}`;
   return type || size || null;
+}
+
+function routeCell(routes) {
+  const node = document.createElement("td");
+  if (!routes || routes.length === 0) {
+    node.textContent = "—";
+    return node;
+  }
+  routes.forEach((route) => {
+    const badge = document.createElement("span");
+    badge.className = "route-badge";
+    badge.textContent = route;
+    // Beijing-fast premium routes get a highlight (CN2 GIA / AS9929 / CMIN2
+    // / CMI / CUG / CN2 — 中国优化精品线路，北京访问快).
+    if (hasFastRoute([route])) {
+      badge.classList.add("route-fast");
+      badge.title = "北京访问快（中国优化精品线路）";
+    }
+    node.append(badge);
+    node.append(document.createTextNode(" "));
+  });
+  return node;
 }
 
 function numeric(row, field) {
@@ -221,7 +249,7 @@ function compareRows(left, right) {
 }
 
 function render() {
-  cardsNode.replaceChildren();
+  bodyNode.replaceChildren();
   const region = regionFilter.value.trim().toLowerCase();
   const needle = searchBox.value.trim().toLowerCase();
   const minReliability = Number(reliabilityFilter.value || 0);
@@ -249,76 +277,45 @@ function render() {
   visible.sort(compareRows);
 
   visible.forEach((row) => {
-    // 卡片视图（2026-08-11 用户要求：表格与卡片内容重复，只保留卡片；
-    // 卡片补齐原表格字段：链接/规格/线路/月化 tooltip/库存/原因）
-    const card = document.createElement("article");
-    const title = document.createElement("h2");
+    const tr = document.createElement("tr");
+    const plan = cell(row.plan_name);
     const href = safeOfferLink(row);
     if (href) {
       const link = document.createElement("a");
       link.href = href;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
-      link.textContent = `${row.provider} · ${row.plan_name}`;
-      title.replaceChildren(link);
-    } else {
-      title.textContent = `${row.provider} · ${row.plan_name}`;
+      link.textContent = row.plan_name;
+      plan.replaceChildren(link);
     }
     const raw = row.amount === null ? null : `${row.amount} ${row.currency} / ${row.billing_period}`;
-    const detail = document.createElement("p");
-    detail.textContent = `${row.region} · ${row.outcome} · ${raw || "无本轮价格"}`;
-    const cpu = specValue(row, "cpu");
-    const ram = specValue(row, "ram_gb");
-    const specs = document.createElement("p");
-    specs.className = "card-specs";
-    // 文本段（CPU/内存/硬盘）用 " · " 连接；线路用 badge（北京快高亮）
-    const textParts = [
-      cpu === null ? null : `CPU ${cpu} 核`,
-      ram === null ? null : `内存 ${ram}GB`,
-      diskLabel(row),
-    ].filter(Boolean);
-    if (textParts.length > 0) {
-      specs.append(document.createTextNode(textParts.join(" · ")));
-    }
-    (row.provider_claimed_routes || []).forEach((route, idx) => {
-      const badge = document.createElement("span");
-      badge.className = "route-badge";
-      badge.textContent = route;
-      // Beijing-fast premium routes get a highlight (CN2 GIA / AS9929 / CMIN2
-      // / CMI / CUG / CN2 — 中国优化精品线路，北京访问快).
-      if (hasFastRoute([route])) {
-        badge.classList.add("route-fast");
-        badge.title = "北京访问快（中国优化精品线路）";
-      }
-      specs.append(document.createTextNode(idx === 0 && textParts.length === 0 ? "" : " · "));
-      specs.append(badge);
-    });
-    // 月化价格（统一 CNY，多支付周期标注最低周期 + tooltip 全周期）
-    const price = document.createElement("p");
-    price.className = "card-price";
-    price.textContent = `月化 ${monthlyLabel(row)}`;
+    // 月化价格统一按 CNY 展示（2026-08-11 用户要求：格式统一为 ¥xx.xx）；
+    // 多支付周期时标注最低价周期 + tooltip 列出全部周期月化单价
+    const monthlyNode = cell(monthlyLabel(row));
     const pointsTitle = pricePointsTitle(row);
     if (pointsTitle) {
-      price.title = pointsTitle;
-    }
-    const meta = document.createElement("p");
-    meta.className = "card-meta";
-    meta.textContent = `性价比 ${stars(row.value_score)} · 可靠性 ${stars(row.reliability)} · 超售 ${oversellLabel(row.oversell)}`;
-    if (row.reliability_note) {
-      meta.title = row.reliability_note;
+      monthlyNode.title = pointsTitle;
     }
     const reason = row.rejection_reason || row.block_reason || "";
     const diag = row.browser_diag || "";
-    const status = document.createElement("p");
-    status.className = "card-status";
-    status.textContent = `库存 ${row.availability}${(reason || diag) ? ` · ${reason || diag}` : ""}`;
+    const reasonEl = document.createElement("td");
+    reasonEl.textContent = reason || diag || "—";
     if (diag && reason) {
-      status.title = `浏览器诊断：${diag}`;
+      reasonEl.textContent = `${reason} · ${diag}`;
+      reasonEl.title = `浏览器诊断：${diag}`;
     } else if (diag) {
-      status.title = `浏览器诊断：${diag}`;
+      reasonEl.title = `浏览器诊断：${diag}`;
     }
-    card.append(title, detail, specs, price, meta, status);
-    cardsNode.append(card);
+    const cpu = specValue(row, "cpu");
+    const ram = specValue(row, "ram_gb");
+    const ramLabel = ram === null ? null : `${ram}GB`;
+    tr.append(cell(row.provider), plan, cell(row.region), cell(row.outcome),
+      cell(cpu === null ? null : `${cpu} 核`), cell(ramLabel), cell(diskLabel(row)),
+      routeCell(row.provider_claimed_routes),
+      cell(raw), monthlyNode, cell(stars(row.value_score)), cell(stars(row.reliability)),
+      cell(oversellLabel(row.oversell)), cell(row.availability), reasonEl);
+    bodyNode.append(tr);
+
   });
 }
 
@@ -587,6 +584,7 @@ async function load() {
     addOptions(routeFilter, rows.flatMap((row) => row.provider_claimed_routes || []));
     renderSortRules();
     render();
+    initHScroll();
     loadDeals();
   } catch (_error) {
     setState("structure-blocked", "structure-blocked：公开数据加载或校验失败");
@@ -599,8 +597,51 @@ async function load() {
 optRamFilter.addEventListener("change", render);
 optPriceFilter.addEventListener("change", render);
 
-// 表格视图已移除（2026-08-11 用户要求：卡片与表格内容重复，只保留卡片），
-// 原浮动横向滚动条 initHScroll 随之删除。
+// 浮动横向滚动条（2026-08-11 用户要求）：横向滚动条原生位于表格容器
+// 底部，表格很长时必须竖向滚到底才能看到。改为鼠标进入表格范围时，
+// 在视口底部浮现一个浮动横向滚动条（fixed），与容器 scrollLeft 双向
+// 同步，可拖动；离开表格范围后隐藏。
+function initHScroll() {
+  const wrap = document.querySelector(".table-wrap");
+  if (!wrap || wrap.dataset.hscroll) return;
+  wrap.dataset.hscroll = "1";
+  const bar = document.createElement("div");
+  bar.className = "hscroll-float";
+  const track = document.createElement("div");
+  track.className = "hscroll-track";
+  const thumb = document.createElement("div");
+  thumb.className = "hscroll-thumb";
+  track.append(thumb);
+  bar.append(track);
+  document.body.append(bar);
+  const maxScroll = () => wrap.scrollWidth - wrap.clientWidth;
+  function sync() {
+    if (maxScroll() <= 0) { bar.style.display = "none"; return; }
+    const maxThumb = track.clientWidth - thumb.offsetWidth;
+    const pct = maxScroll() > 0 ? wrap.scrollLeft / maxScroll() : 0;
+    thumb.style.left = `${Math.max(0, Math.min(1, pct)) * maxThumb}px`;
+  }
+  wrap.addEventListener("mouseenter", () => { sync(); bar.style.display = "block"; });
+  wrap.addEventListener("mousemove", sync);
+  wrap.addEventListener("mouseleave", () => { bar.style.display = "none"; });
+  wrap.addEventListener("scroll", sync);
+  let drag = null;
+  thumb.addEventListener("mousedown", (e) => {
+    drag = { startX: e.clientX, startLeft: wrap.scrollLeft };
+    bar.classList.add("dragging");
+    e.preventDefault();
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (!drag) return;
+    const maxThumb = track.clientWidth - thumb.offsetWidth;
+    const ratio = maxThumb > 0 ? (e.clientX - drag.startX) / maxThumb : 0;
+    wrap.scrollLeft = drag.startLeft + ratio * maxScroll();
+    sync();
+  });
+  window.addEventListener("mouseup", () => {
+    if (drag) { drag = null; bar.classList.remove("dragging"); }
+  });
+}
 sortAdd.addEventListener("click", () => {
   if (sortRules.length >= 4) return;
   sortRules.push({field: "updated", dir: "desc"});
