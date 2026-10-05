@@ -1,3 +1,7 @@
+# ── GitHub Actions 硬开关（2026-10-05 用户裁定）────────────────────────
+# GitHub 账户曾因反滥用机制误伤暂停，爬虫/AI 自修复禁止在 Actions 运行。
+# 工作流主力 = 腾讯云 CNB（.cnb.yml）。此处 if:false 防止 UI 误开后仍执行。
+# 七端代码对等同步，仅工作流免费资源不同。
 name: VPS deal monitor
 
 on:
@@ -118,6 +122,7 @@ jobs:
           path: site
 
   deploy:
+    if: false  # CNB 为工作流主力，GitHub Actions 禁跑爬虫/AI 自修复
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -139,6 +144,7 @@ jobs:
         uses: actions/deploy-pages@v4
 
   post_verify:
+    if: false  # CNB 为工作流主力，GitHub Actions 禁跑爬虫/AI 自修复
     needs: deploy
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -159,6 +165,7 @@ jobs:
         run: python scripts/post_deploy_verify.py --base-url "${{ needs.deploy.outputs.page_url }}" --expected expected-site/manifest.json --expected-prices scripts/expected_prices.json
 
   product_gate:
+    if: false  # CNB 为工作流主力，GitHub Actions 禁跑爬虫/AI 自修复
     needs: post_verify
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -231,6 +238,7 @@ jobs:
           fi
 
   release:
+    if: false  # CNB 为工作流主力，GitHub Actions 禁跑爬虫/AI 自修复
     needs: product_gate
     runs-on: ubuntu-latest
     timeout-minutes: 10

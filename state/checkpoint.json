@@ -1,0 +1,20 @@
+{
+  "schema_version": 4,
+  "batch_id": "crawl_vps_promotions:cnb-20261004222034:1",
+  "completed_task_ids": [
+    "bandwagon-osaka-40g",
+    "buyvm-slice4096",
+    "cloudcone-ssd-vps-4",
+    "greencloud-budgetkvmhk2-3",
+    "hostdare-camd3",
+    "hostdare-cssd3",
+    "jtti-jp-optimized",
+    "jtti-us-cn2",
+    "layerstack-r108",
+    "lisahost-us-9929-annual",
+    "racknerd-4gb-special",
+    "zorocloud-jp-cn2-pro",
+    "zorocloud-us-9929-pro",
+    "zorocloud-us-cnc-pro"
+  ]
+}

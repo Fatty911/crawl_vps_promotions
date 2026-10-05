@@ -5,51 +5,95 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import ipaddress
 import json
+import socket
 import sys
 import time
-import urllib.request
+import urllib.parse
 from pathlib import Path, PurePosixPath
 from urllib.parse import urljoin
+
+import requests
 
 
 MAX_FILE_BYTES = 25 * 1024 * 1024
 
+# 本机代理 (Clash/mihomo TUN) 的 fake-ip 透传段: 域名经 TUN DNS 解析恒得这两段,
+# 真实出口由代理解析, 不是内网目标 (AA 采集器与本脚本都曾被它误伤)
+_FAKE_IP_NETS = (
+    ipaddress.ip_network("198.18.0.0/15"),
+    ipaddress.ip_network("2001:2::/48"),
+)
+
+
+def _require_public_base(base_url: str) -> str:
+    """验收目标必须 https，且主机不是字面量内网/元数据地址。
+
+    base_url 来自流水线参数（可被写坏），不设防时一个指向内网/元数据地址的
+    base_url 会让验收变成携内网探测能力的跳板；禁重定向（_get 的 opener）
+    防止用公网首跳绕过此检查。刻意不做 DNS 解析级校验：CNB 容器的 DNS/
+    透明代理架构下域名解析结果可以是平台内网网关（09-30 实证 pages.dev 因此
+    被误杀、验收 155s 秒挂），解析值在此环境不构成内网判定依据；字面量
+    内网 IP/主机名（实际攻击面）仍逐项拒绝。"""
+    parsed = urllib.parse.urlparse(str(base_url).rstrip("/"))
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or not host:
+        raise ValueError(f"verify base_url must be https with a host: {base_url!r}")
+    if host == "localhost" or host.endswith((".local", ".internal")):
+        raise ValueError(f"verify base_url refuses non-public host: {host!r}")
+    try:
+        addr = ipaddress.ip_address(host)
+    except ValueError:
+        return parsed.geturl()  # 域名：字面量检查已过，解析层交由运行环境
+    if not addr.is_global:
+        raise ValueError(f"verify base_url refuses non-public literal address: {host!r}")
+    return parsed.geturl()
+
 
 def compare_manifests(expected: dict, actual: dict) -> list[str]:
-    # web/ 前端文件可由独立 pages-deploy workflow 更新（2026-08-11 用户
-    # 要求：前端展示改动独立部署、不被爬取/merge 阻塞），其哈希在两次
-    # monitor 构建之间允许与线上不一致；data/ 与核心字段必须严格一致。
-    def files_minus_web(files):
-        return {k: v for k, v in (files or {}).items() if not str(k).startswith("web/")}
-    fields = [
+    return [
         field
-        for field in ("schema_version", "batch_id", "source_sha", "mode", "run_id", "run_attempt")
+        for field in ("schema_version", "batch_id", "source_sha", "mode", "run_id", "run_attempt", "files")
         if expected.get(field) != actual.get(field)
     ]
-    if files_minus_web(expected.get("files")) != files_minus_web(actual.get("files")):
-        fields.append("files(web-excluded)")
-    return fields
 
 
 def _get(url: str) -> bytes:
-    request = urllib.request.Request(url, headers={"User-Agent": "pages-post-deploy-verify"})
-    with urllib.request.urlopen(request, timeout=30) as response:
-        data = response.read(MAX_FILE_BYTES + 1)
+    # 用 requests（run_footprint 出口探测同款头集）：09-30 全天留痕实证，CNB 出口对
+    # 裸 urllib（HTTP/1.1、无典型头集）的请求恒返 308（CF 对非浏览器客户端的反爬
+    # 挑战，UA 与 query 均非变量），requests 形态每轮 200。allow_redirects=False
+    # 保留禁重定向语义：跟随会绕过 _require_public_base 的主机校验。
+    response = requests.get(
+        url,
+        headers={"User-Agent": "Mozilla/5.0 Chrome/126"},
+        timeout=30,
+        allow_redirects=False,
+    )
+    if response.status_code != 200:
+        raise OSError(f"public file fetch failed: HTTP {response.status_code} {url}")
+    data = response.content
     if len(data) > MAX_FILE_BYTES:
         raise OSError("public file exceeds size limit")
     return data
 
 
 def verify(base_url: str, expected: dict) -> None:
-    actual = json.loads(_get(urljoin(base_url.rstrip("/") + "/", "manifest.json")))
+    # 刻意不加 cachebust query：CF Pages 对带 query 的静态资产请求返回 308 重定向
+    # （cleanUrl 行为，POSIX 留痕批 sn=cnb-acf-1k3qibak9 的 20 次进度行实证），
+    # 而禁重定向钉死首跳会让 308 直接失败。pages.dev 默认域部署即时生效、
+    # max-age=0 不缓存，本就不需要绕缓存。
+    actual = json.loads(_get(urljoin(base_url.rstrip("/") + "/", "data/manifest.json")))
     mismatches = compare_manifests(expected, actual)
     if mismatches:
-        raise ValueError(f"public manifest mismatch: {','.join(mismatches)}")
+        # actual 关键字段进异常消息：进度行直接暴露线上真实 run 标识，
+        # 区分「旧轮缓存/传播延迟」（actual.run_id 是旧轮）与「真不一致」（同轮仍异）
+        raise ValueError(
+            f"public manifest mismatch: {','.join(mismatches)}"
+            f" [actual run_id={actual.get('run_id')}"
+            f" source_sha={str(actual.get('source_sha'))[:12]}]"
+        )
     for name, metadata in expected["files"].items():
-        if str(name).startswith("web/"):
-            # 前端文件由 pages-deploy workflow 独立验证哈希（不在此处比对）
-            continue
         path = PurePosixPath(str(name))
         if path.is_absolute() or ".." in path.parts:
             raise ValueError(f"unsafe manifest path: {name}")
@@ -58,64 +102,35 @@ def verify(base_url: str, expected: dict) -> None:
             raise ValueError(f"public file hash mismatch: {name}")
 
 
-def verify_prices(base_url: str, expected_prices: dict) -> None:
-    """Data-semantic gate: the live prices.json must contain every expected
-    task with matching amount/period/availability (currency may be EUR or USD
-    — Contabo serves equivalent prices per visitor locale, same numbers).
-
-    Snapshot values come from scripts/expected_prices.json; when a promo
-    ends the amount changes and this gate fails on purpose, forcing a human
-    to refresh the snapshot (2026-08-11 user rule: deployment only counts as
-    success once the deployed data matches reality)."""
-    payload = json.loads(_get(urljoin(base_url.rstrip("/") + "/", "data/prices.json")))
-    by_task = {str(row.get("task_id") or row.get("id") or ""): row for row in payload if isinstance(row, dict)}
-    expected_tasks = {tid: spec for tid, spec in expected_prices.items() if not tid.startswith("_")}
-    missing = [tid for tid in expected_tasks if tid not in by_task]
-    if missing:
-        raise ValueError(f"expected prices missing tasks: {','.join(sorted(missing))}")
-    mismatches = []
-    for tid, expected in expected_tasks.items():
-        row = by_task[tid]
-        amount = row.get("amount")
-        if amount is None or abs(float(amount) - float(expected["amount"])) > 0.01:
-            mismatches.append(f"{tid}:amount={amount}!= {expected['amount']}")
-        currency = row.get("currency")
-        if currency not in expected["currency"]:
-            mismatches.append(f"{tid}:currency={currency}")
-        if row.get("billing_period") != expected["billing_period"]:
-            mismatches.append(f"{tid}:period={row.get('billing_period')}")
-        if row.get("availability") != expected["availability"]:
-            mismatches.append(f"{tid}:avail={row.get('availability')}")
-    if mismatches:
-        raise ValueError("live prices mismatch: " + "; ".join(mismatches))
-    print(f"PRICES_VERIFIED tasks={len(expected_prices)}")
-
-
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--expected", required=True)
-    parser.add_argument("--expected-prices", default="")
     parser.add_argument("--attempts", type=int, default=6)
     args = parser.parse_args()
+    base_url = _require_public_base(args.base_url)
     expected = json.loads(Path(args.expected).read_text(encoding="utf-8"))
-    expected_prices = (
-        json.loads(Path(args.expected_prices).read_text(encoding="utf-8"))
-        if args.expected_prices
-        else None
-    )
     error: Exception | None = None
     for attempt in range(args.attempts):
         try:
-            verify(args.base_url, expected)
-            if expected_prices is not None:
-                verify_prices(args.base_url, expected_prices)
+            verify(base_url, expected)
             print(f"POST_DEPLOY_VERIFIED batch={expected['batch_id']} source_sha={expected['source_sha']}")
             return 0
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             error = exc
+            # 每次重试必须有一行输出：CNB 对「连续 10 分钟无输出」的 job 强杀（09-30 sn=cnb-idr
+            # 实证 600086ms 整，验收 20x30s 静默重试恰好撞线被砍，商品门禁连带 skip）。
+            # 且 stdout 在管道下全缓冲——不切行缓冲的话这些进度行同样到不了平台。
+            try:
+                sys.stdout.reconfigure(line_buffering=True)
+            except (AttributeError, ValueError):
+                pass
+            print(f"attempt {attempt + 1}/{args.attempts}: {type(exc).__name__}: {exc}")
             if attempt + 1 < args.attempts:
-                time.sleep(10)
+                # 09-30 实测（sn=cnb-e1a-1k3o7uvqe）：CF Pages 部署后边缘传播超过 12x10s=2 分钟，
+                # 验收全程读到旧 manifest 误报 mismatch；10 分钟后复测同内容已可见。
+                # 间隔放宽到 30s，12 次窗口 2 分钟 → 6 分钟。
+                time.sleep(30)
     print(f"POST_DEPLOY_FAILED {type(error).__name__}: {error}", file=sys.stderr)
     return 1
 

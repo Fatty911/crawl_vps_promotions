@@ -1,146 +1,297 @@
-name: pages-deploy (frontend-only)
-
-# 前端展示改动独立部署路径（2026-08-11 用户要求）：web/** 变更后只重部署
-# Pages，不跑爬取/merge/质量门，不被 monitor 链阻塞。数据（data/）取自
-# 最近一次成功的 monitor 构建产物（pages-payload-* artifact），web/ 用
-# 本次提交的最新版本覆盖（monitor 发布时前端文件拍平到 site 根目录，
-# 这里同样覆盖到根，不建 web/ 子目录）。
-#
-# 与 vps-monitor 的 deploy job 共用 concurrency 组 pages-deploy，保证
-# Pages artifact 上传/部署串行（GitHub Pages artifact 是单槽）。
-
-on:
-  push:
-    branches: [main]
-    paths:
-      - web/**
-  workflow_dispatch:
-
-concurrency:
-  group: pages-deploy
-  cancel-in-progress: false
-
-env:
-  SOURCE_SHA: ${{ github.sha }}
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ env.SOURCE_SHA }}
-      - name: Find latest successful monitor build
-        id: find
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const { data: runs } = await github.rest.actions.listWorkflowRuns({
-              owner: context.repo.owner, repo: context.repo.repo,
-              workflow_id: 'vps-monitor.yml', branch: 'main', status: 'success', per_page: 1,
-            });
-            if (!runs.workflow_runs || runs.workflow_runs.length === 0) {
-              core.setFailed('no successful monitor run found; run monitor first');
-              return;
-            }
-            const runId = runs.workflow_runs[0].id;
-            const { data: arts } = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner, repo: context.repo.repo, run_id: runId,
-            });
-            const art = arts.artifacts.find((a) => a.name.startsWith('pages-payload-'));
-            if (!art) {
-              core.setFailed(`no pages-payload artifact in monitor run ${runId}`);
-              return;
-            }
-            core.setOutput('monitor_run', String(runId));
-            core.setOutput('payload_artifact', art.name);
-      - name: Download latest monitor payload (data + previous web)
-        uses: actions/download-artifact@v5
-        with:
-          name: ${{ steps.find.outputs.payload_artifact }}
-          path: site
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ steps.find.outputs.monitor_run }}
-      - name: Verify payload integrity
-        run: |
-          test -f site/manifest.json && test -d site/data && echo "payload OK"
-      - name: Overlay this commit's web/ (frontend-only change)
-        run: |
-          cp -r web/* site/
-      - name: Frontend sanity checks
-        run: |
-          node --check web/app.js
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          site = Path("site")
-          assert (site / "index.html").read_text(encoding="utf-8").count('id="opt-ram"') == 1
+# ── GitHub Actions 硬开关（2026-10-05 用户裁定）────────────────────────
+# GitHub 账户曾因反滥用机制误伤暂停，爬虫/AI 自修复禁止在 Actions 运行。
+# 工作流主力 = 腾讯云 CNB（.cnb.yml）。此处 if:false 防止 UI 误开后仍执行。
+# 七端代码对等同步，仅工作流免费资源不同。
+name: pages-deploy (frontend-only)
+
+
+
+# 前端展示改动独立部署路径（2026-08-11 用户要求）：web/** 变更后只重部署
+
+# Pages，不跑爬取/merge/质量门，不被 monitor 链阻塞。数据（data/）取自
+
+# 最近一次成功的 monitor 构建产物（pages-payload-* artifact），web/ 用
+
+# 本次提交的最新版本覆盖（monitor 发布时前端文件拍平到 site 根目录，
+
+# 这里同样覆盖到根，不建 web/ 子目录）。
+
+#
+
+# 与 vps-monitor 的 deploy job 共用 concurrency 组 pages-deploy，保证
+
+# Pages artifact 上传/部署串行（GitHub Pages artifact 是单槽）。
+
+
+
+on:
+
+  push:
+
+    branches: [main]
+
+    paths:
+
+      - web/**
+
+  workflow_dispatch:
+
+
+
+concurrency:
+
+  group: pages-deploy
+
+  cancel-in-progress: false
+
+
+
+env:
+
+  SOURCE_SHA: ${{ github.sha }}
+
+
+
+jobs:
+
+  build:
+    if: false  # CNB 为工作流主力，GitHub Actions 禁跑爬虫/AI 自修复
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 15
+
+    permissions:
+
+      contents: read
+
+      actions: read
+
+    steps:
+
+      - name: Checkout
+
+        uses: actions/checkout@v6
+
+        with:
+
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Find latest successful monitor build
+
+        id: find
+
+        uses: actions/github-script@v8
+
+        with:
+
+          script: |
+
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+
+              owner: context.repo.owner, repo: context.repo.repo,
+
+              workflow_id: 'vps-monitor.yml', branch: 'main', status: 'success', per_page: 1,
+
+            });
+
+            if (!runs.workflow_runs || runs.workflow_runs.length === 0) {
+
+              core.setFailed('no successful monitor run found; run monitor first');
+
+              return;
+
+            }
+
+            const runId = runs.workflow_runs[0].id;
+
+            const { data: arts } = await github.rest.actions.listWorkflowRunArtifacts({
+
+              owner: context.repo.owner, repo: context.repo.repo, run_id: runId,
+
+            });
+
+            const art = arts.artifacts.find((a) => a.name.startsWith('pages-payload-'));
+
+            if (!art) {
+
+              core.setFailed(`no pages-payload artifact in monitor run ${runId}`);
+
+              return;
+
+            }
+
+            core.setOutput('monitor_run', String(runId));
+
+            core.setOutput('payload_artifact', art.name);
+
+      - name: Download latest monitor payload (data + previous web)
+
+        uses: actions/download-artifact@v5
+
+        with:
+
+          name: ${{ steps.find.outputs.payload_artifact }}
+
+          path: site
+
+          github-token: ${{ github.token }}
+
+          repository: ${{ github.repository }}
+
+          run-id: ${{ steps.find.outputs.monitor_run }}
+
+      - name: Verify payload integrity
+
+        run: |
+
+          test -f site/manifest.json && test -d site/data && echo "payload OK"
+
+      - name: Overlay this commit's web/ (frontend-only change)
+
+        run: |
+
+          cp -r web/* site/
+
+      - name: Frontend sanity checks
+
+        run: |
+
+          node --check web/app.js
+
+          python - <<'PY'
+
+          import json
+
+          from pathlib import Path
+
+          site = Path("site")
+
+          assert (site / "index.html").read_text(encoding="utf-8").count('id="opt-ram"') == 1
+
           # 2026-08-11 用户要求：表格视图移除，卡片为唯一展示
           assert 'id="cards"' not in (site / "index.html").read_text(encoding="utf-8")
-          assert "initHScroll" in (site / "app.js").read_text(encoding="utf-8")
-          manifest = json.loads((site / "manifest.json").read_text(encoding="utf-8"))
-          assert manifest.get("schema_version") == 4 and manifest.get("mode") == "live"
-          assert (site / "data" / "status.json").exists()
-          print("frontend payload OK:", manifest.get("batch_id"), manifest.get("source_sha"))
-          PY
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: site
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    outputs:
-      page_url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-
-  verify:
-    needs: deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          ref: ${{ env.SOURCE_SHA }}
-      - name: Verify deployed frontend assets (hash-exact) and data presence
-        run: |
-          python - <<'PY'
-          import hashlib, urllib.request
-          base = "${{ needs.deploy.outputs.page_url }}".rstrip("/") + "/"
-          def get(path):
-              req = urllib.request.Request(base + path, headers={"User-Agent": "pages-frontend-verify"})
-              with urllib.request.urlopen(req, timeout=30) as r:
-                  return r.read()
-          for name in ("index.html", "app.js", "styles.css"):
-              local = hashlib.sha256(open(f"web/{name}", "rb").read()).hexdigest()
-              remote = hashlib.sha256(get(name)).hexdigest()
-              assert local == remote, f"web/{name} hash mismatch: {remote} != {local}"
-              print(f"web/{name}: hash OK {local[:12]}")
-          manifest = __import__("json").loads(get("manifest.json"))
-          assert manifest.get("mode") == "live"
-          assert len(get("data/status.json")) > 100
-          print("frontend deploy verify: OK", manifest.get("batch_id"))
-          PY
+          assert "initHScroll" in (site / "app.js").read_text(encoding="utf-8")
+
+          manifest = json.loads((site / "manifest.json").read_text(encoding="utf-8"))
+
+          assert manifest.get("schema_version") == 4 and manifest.get("mode") == "live"
+
+          assert (site / "data" / "status.json").exists()
+
+          print("frontend payload OK:", manifest.get("batch_id"), manifest.get("source_sha"))
+
+          PY
+
+      - name: Configure Pages
+
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+
+        uses: actions/upload-pages-artifact@v4
+
+        with:
+
+          path: site
+
+
+
+  deploy:
+    if: false  # CNB 为工作流主力，GitHub Actions 禁跑爬虫/AI 自修复
+
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 10
+
+    permissions:
+
+      contents: read
+
+      pages: write
+
+      id-token: write
+
+    environment:
+
+      name: github-pages
+
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    outputs:
+
+      page_url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+
+      - name: Deploy to GitHub Pages
+
+        id: deployment
+
+        uses: actions/deploy-pages@v4
+
+
+
+  verify:
+    if: false  # CNB 为工作流主力，GitHub Actions 禁跑爬虫/AI 自修复
+
+    needs: deploy
+
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 10
+
+    permissions:
+
+      contents: read
+
+    steps:
+
+      - name: Checkout
+
+        uses: actions/checkout@v6
+
+        with:
+
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify deployed frontend assets (hash-exact) and data presence
+
+        run: |
+
+          python - <<'PY'
+
+          import hashlib, urllib.request
+
+          base = "${{ needs.deploy.outputs.page_url }}".rstrip("/") + "/"
+
+          def get(path):
+
+              req = urllib.request.Request(base + path, headers={"User-Agent": "pages-frontend-verify"})
+
+              with urllib.request.urlopen(req, timeout=30) as r:
+
+                  return r.read()
+
+          for name in ("index.html", "app.js", "styles.css"):
+
+              local = hashlib.sha256(open(f"web/{name}", "rb").read()).hexdigest()
+
+              remote = hashlib.sha256(get(name)).hexdigest()
+
+              assert local == remote, f"web/{name} hash mismatch: {remote} != {local}"
+
+              print(f"web/{name}: hash OK {local[:12]}")
+
+          manifest = __import__("json").loads(get("manifest.json"))
+
+          assert manifest.get("mode") == "live"
+
+          assert len(get("data/status.json")) > 100
+
+          print("frontend deploy verify: OK", manifest.get("batch_id"))
+
+          PY
+
