@@ -315,7 +315,8 @@ def test_pages_deploy_frontend_only_workflow():
     # 前端验证：web/ 文件哈希与线上精确一致
     assert "hash mismatch" in text
     # monitor 的 deploy job 必须加入同组串行，避免 Pages artifact 竞争
-    monitor = Path(__file__).parents[1] / ".github" / "workflows" / "vps-monitor.yml"
-    mtext = monitor.read_text(encoding="utf-8")
+    # 拆分后 deploy 在 pages-deploy.yml
+    pages = Path(__file__).parents[1] / ".github" / "workflows" / "pages-deploy.yml"
+    mtext = pages.read_text(encoding="utf-8")
     assert mtext.count("group: pages-deploy") == 1
     assert "concurrency:" in mtext

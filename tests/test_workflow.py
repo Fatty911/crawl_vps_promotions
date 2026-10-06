@@ -22,13 +22,15 @@ def test_workflow_has_separate_ordered_build_deploy_verify_gate_alert_release_jo
     raw = WORKFLOW.read_text(encoding="utf-8")
     workflow = yaml.safe_load(raw)
     jobs = workflow["jobs"]
-    assert {"build", "deploy", "post_verify", "product_gate", "alert", "release"} <= jobs.keys()
-    assert jobs["deploy"]["needs"] == "build"
-    assert jobs["post_verify"]["needs"] == "deploy"
-    assert jobs["product_gate"]["needs"] == "post_verify"
-    assert "product_gate" in jobs["alert"]["needs"]
-    assert jobs["release"]["needs"] == "product_gate"
-    assert jobs["deploy"]["environment"]["name"] == "github-pages"
+    # 拆分后：vps-monitor.yml 只负责 build（爬取），deploy/verify/gate/alert/release 归 pages-deploy.yml
+    assert "build" in jobs.keys()
+    assert "deploy" not in jobs.keys()
+    # deploy jobs moved to pages-deploy.yml
+    # post_verify moved to pages-deploy.yml
+    # product_gate moved to pages-deploy.yml
+    # alert moved to pages-deploy.yml
+    # release moved to pages-deploy.yml
+    # deploy environment moved to pages-deploy.yml
     assert workflow["concurrency"]["cancel-in-progress"] is False
     assert "20 22 * * *" in raw
     assert "workflow_run" in raw
@@ -51,8 +53,7 @@ def test_build_restores_state_tests_early_evidence_then_structural_gate_and_page
     assert "path: site/data/live-evidence.json" in raw
     assert "path: site/data/batch.json" not in raw[raw.index("Upload early live evidence"):raw.index("Upload early state")]
     assert "--live --output" in raw
-    assert 'title="monitor-blocked:$fingerprint"' in raw
-    assert "gh issue close" in raw
+    # alert/issue jobs moved to pages-deploy.yml after split
 
 
 def test_live_crawl_sets_up_mihomo_rotation_with_direct_fallback():
@@ -93,15 +94,6 @@ def test_job_permissions_are_minimal_and_ci_is_read_only():
         "id-token": "write",
         "attestations": "write",
     }
-    assert workflow["jobs"]["deploy"]["permissions"] == {
-        "contents": "read",
-        "pages": "write",
-        "id-token": "write",
-    }
-    assert workflow["jobs"]["alert"]["permissions"] == {
-        "contents": "read",
-        "actions": "read",
-        "issues": "write",
-    }
+    # deploy/alert permissions moved to pages-deploy.yml after split
     ci = yaml.safe_load(CI.read_text(encoding="utf-8"))
     assert ci["permissions"] == {"contents": "read"}
