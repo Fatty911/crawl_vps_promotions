@@ -202,7 +202,12 @@ main:
             # GitHub 原链路每轮有唯一 GITHUB_RUN_ID，manifest 的 batch/run 标识因此逐轮可区分；
             # CNB 上没有该变量时 monitor 兜底恒 local —— 09-30 实证这会让相邻两轮（同 HEAD）的
             # 线上验收无法区分「旧轮缓存未传播」与「真不一致」（mismatch: files）。注入构建唯一标识。
-            export GITHUB_RUN_ID="${CNB_BUILD_SN:-cnb-$(date +%Y%m%d%H%M%S)}"
+            # debug_mode（对齐 GitHub workflow_dispatch inputs.debug_mode）
+            if [ "${DEBUG_MODE:-false}" = "true" ]; then
+              MODE="debug小批量"
+              echo "DEBUG_MODE=true: 调试模式小批量抓取"
+            fi
+            export GITHUB_RUN_ID="${CNB_BUILD_SN:-cnb-$(date +%Y%m%d%H%M%S)}"="${CNB_BUILD_SN:-cnb-$(date +%Y%m%d%H%M%S)}"
             export GITHUB_RUN_ATTEMPT="1"
             echo "run identity: $GITHUB_RUN_ID"
             HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= python -m vps_monitor.monitor --live --output
