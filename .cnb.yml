@@ -48,101 +48,6 @@ main:
               echo "X COMPILE 未通过：A && echo PASS || echo FAIL 的退出码恒为 0，属结构性假绿"
               exit 1
             fi
-      failStages:
-        - name: 诊断-收集失败上下文
-          script: |
-            {
-              echo "## 失败概览"
-              echo "| 项目 | 内容 |"
-              echo "| --- | --- |"
-              echo "| 失败阶段 | $CNB_BUILD_FAILED_STAGE_NAME |"
-              echo "| 失败原因 | \`$CNB_BUILD_FAILED_MSG\` |"
-              echo "| 触发分支 | $CNB_BRANCH |"
-              echo "| 提交 | $CNB_COMMIT_SHORT |"
-              echo "| 构建日志 | $CNB_BUILD_WEB_URL |"
-              echo ""
-              echo "## 测试输出（最后50行）"
-              echo '```'
-              tail -50 _test_result_.txt 2>/dev/null || echo "(无)"
-              echo '```'
-              echo ""
-              echo "## 阶段上下文"
-              cat _stage_context_.env 2>/dev/null || echo "(无)"
-            } > _fail_context_.md
-        - name: 备份受保护文件
-          script: |
-            [ -f AGENTS.md ] && cp AGENTS.md AGENTS.md.protected_backup
-        - name: AI-修复-第1轮
-          type: npc:go
-          env:  # Agent 型 stage 有 shell 能力：发布类凭据与代理订阅不下容器，平台令牌保留以免破坏 npc 自身鉴权
-            GITLAB_TOKEN: ""
-            CODEBERG_TOKEN: ""
-            CLOUDFLARE_API_TOKEN: ""
-            PROXY_SUBSCRIPTIONS: ""
-          options:
-            model: deepseek-v4-flash
-            thinkingLevel: max
-            maxTurns: 40
-            contextWindow: 256k
-            systemPrompt: |
-              你是 VPS 促销监控流水线修复专家。阅读 _fail_context_.md 中的失败上下文。
-              这是第1轮修复（最多2轮）。分析根因后修改代码。
-              规则：不伪造数据、不折叠真冲突、不删校验、不降防护。
-              促销价格/库存字段必须保留原始来源与采集时间。
-              修复后写报告到 _fix_report_.md。
-            userPrompt: |
-              读取 _fail_context_.md，分析失败并修复。修复后写报告到 _fix_report_.md。
-        - name: 恢复受保护文件
-          script: |
-            if [ -f AGENTS.md.protected_backup ] && ! cmp -s AGENTS.md AGENTS.md.protected_backup 2>/dev/null; then
-              echo "⚠️ 恢复受保护文件 AGENTS.md"
-              cp AGENTS.md.protected_backup AGENTS.md
-            fi
-            find . -name '*.protected_backup' -delete
-        - name: 验证-语法校验
-          script: |
-            python -m compileall -q vps_monitor scripts && echo "COMPILE_VALIDATE=PASS" >> _fix_report_.md || { echo "COMPILE_VALIDATE=FAIL" >> _fix_report_.md; exit 1; }
-        - name: 验证-pytest
-          script: |
-            python -m pytest -q 2>&1 | tee _test_after_fix_.txt
-            rc=${PIPESTATUS[0]}
-            if [ "$rc" -eq 0 ]; then echo "PYTEST_VALIDATE=PASS" >> _fix_report_.md; else echo "PYTEST_VALIDATE=FAIL" >> _fix_report_.md; fi
-            echo "PYTEST_EXIT_AFTER=$rc" >> _stage_context_.env
-        - name: 审查-NPC代码审查
-          type: npc:go
-          env:  # Agent 型 stage 有 shell 能力：发布类凭据与代理订阅不下容器，平台令牌保留以免破坏 npc 自身鉴权
-            GITLAB_TOKEN: ""
-            CODEBERG_TOKEN: ""
-            CLOUDFLARE_API_TOKEN: ""
-            PROXY_SUBSCRIPTIONS: ""
-          options:
-            model: deepseek-v4-flash
-            thinkingLevel: high
-            maxTurns: 15
-            contextWindow: 128k
-            systemPrompt: |
-              你是代码审查员。读取 _fail_context_.md、_fix_report_.md、_test_after_fix_.txt。
-              检查：监控门禁结构校验、alert 去重指纹、state 恢复语义、测试断言同步。
-              写审查结果到 _review_result_.md，第一行 VERDICT: PASS 或 VERDICT: FAIL。
-            userPrompt: |
-              审查修复结果，输出到 _review_result_.md。
-        - name: 最终判定
-          script: |
-            # 反篡改闸：自修复不得改动断言或流水线配置（为变绿改测试属禁止项，改为机器强制）
-            if ! git diff --quiet -- tests .cnb.yml 2>/dev/null; then
-              echo "X 自修复改动了 tests/ 或 .cnb.yml，判定为篡改门禁，硬失败"
-              git diff --stat -- tests .cnb.yml || true
-              exit 1
-            fi
-            AFTERRC=$(grep -o 'PYTEST_EXIT_AFTER=[0-9]*' _stage_context_.env 2>/dev/null | tail -1)
-            if [ "${AFTERRC#PYTEST_EXIT_AFTER=}" != "0" ]; then
-              echo "X 修复后 pytest 仍非零退出（$AFTERRC），修复未真正通过"
-              exit 1
-            fi
-            VERDICT=$(head -1 _review_result_.md 2>/dev/null | grep -o 'PASS\|FAIL' || echo "UNKNOWN")
-            echo "审查结果: $VERDICT"
-            [ "$VERDICT" = "PASS" ] && echo "✅ 修复通过" || { echo "❌ 修复未通过"; exit 1; }
-
   api_trigger:
     # 每日促销监控（每日 06:20 Asia/Shanghai，与原 GitHub 22:20 UTC 对齐）
     # 增量语义：state/ 随每轮提交回本仓，monitor 基于上次状态检测促销变化并增量告警
@@ -545,6 +450,77 @@ main:
             else
               echo "WARN 无 CNB_TOKEN，无法自动重触发"
             fi
+        - name: 备份受保护文件
+          script: |
+            [ -f AGENTS.md ] && cp AGENTS.md AGENTS.md.protected_backup
+        - name: AI-修复-第1轮
+          type: npc:go
+          env:  # Agent 型 stage 有 shell 能力：发布类凭据与代理订阅不下容器，平台令牌保留以免破坏 npc 自身鉴权
+            GITLAB_TOKEN: ""
+            CODEBERG_TOKEN: ""
+            CLOUDFLARE_API_TOKEN: ""
+            PROXY_SUBSCRIPTIONS: ""
+          options:
+            model: deepseek-v4-flash
+            thinkingLevel: max
+            maxTurns: 40
+            contextWindow: 256k
+            systemPrompt: |
+              你是 VPS 促销监控流水线修复专家。阅读 _fail_context_.md 中的失败上下文。
+              这是第1轮修复（最多2轮）。分析根因后修改代码。
+              规则：不伪造数据、不折叠真冲突、不删校验、不降防护。
+              促销价格/库存字段必须保留原始来源与采集时间。
+              修复后写报告到 _fix_report_.md。
+            userPrompt: |
+              读取 _fail_context_.md，分析失败并修复。修复后写报告到 _fix_report_.md。
+        - name: 恢复受保护文件
+          script: |
+            if [ -f AGENTS.md.protected_backup ] && ! cmp -s AGENTS.md AGENTS.md.protected_backup 2>/dev/null; then
+              echo "⚠️ 恢复受保护文件 AGENTS.md"
+              cp AGENTS.md.protected_backup AGENTS.md
+            fi
+            find . -name '*.protected_backup' -delete
+        - name: 验证-pytest
+          script: |
+            python -m pytest -q 2>&1 | tee _test_after_fix_.txt
+            rc=${PIPESTATUS[0]}
+            if [ "$rc" -eq 0 ]; then echo "PYTEST_VALIDATE=PASS" >> _fix_report_.md; else echo "PYTEST_VALIDATE=FAIL" >> _fix_report_.md; fi
+            echo "PYTEST_EXIT_AFTER=$rc" >> _stage_context_.env
+        - name: 审查-NPC代码审查
+          type: npc:go
+          env:  # Agent 型 stage 有 shell 能力：发布类凭据与代理订阅不下容器，平台令牌保留以免破坏 npc 自身鉴权
+            GITLAB_TOKEN: ""
+            CODEBERG_TOKEN: ""
+            CLOUDFLARE_API_TOKEN: ""
+            PROXY_SUBSCRIPTIONS: ""
+          options:
+            model: deepseek-v4-flash
+            thinkingLevel: high
+            maxTurns: 15
+            contextWindow: 128k
+            systemPrompt: |
+              你是代码审查员。读取 _fail_context_.md、_fix_report_.md、_test_after_fix_.txt。
+              检查：监控门禁结构校验、alert 去重指纹、state 恢复语义、测试断言同步。
+              写审查结果到 _review_result_.md，第一行 VERDICT: PASS 或 VERDICT: FAIL。
+            userPrompt: |
+              审查修复结果，输出到 _review_result_.md。
+        - name: 最终判定
+          script: |
+            # 反篡改闸：自修复不得改动断言或流水线配置（为变绿改测试属禁止项，改为机器强制）
+            if ! git diff --quiet -- tests .cnb.yml 2>/dev/null; then
+              echo "X 自修复改动了 tests/ 或 .cnb.yml，判定为篡改门禁，硬失败"
+              git diff --stat -- tests .cnb.yml || true
+              exit 1
+            fi
+            AFTERRC=$(grep -o 'PYTEST_EXIT_AFTER=[0-9]*' _stage_context_.env 2>/dev/null | tail -1)
+            if [ "${AFTERRC#PYTEST_EXIT_AFTER=}" != "0" ]; then
+              echo "X 修复后 pytest 仍非零退出（$AFTERRC），修复未真正通过"
+              exit 1
+            fi
+            VERDICT=$(head -1 _review_result_.md 2>/dev/null | grep -o 'PASS\|FAIL' || echo "UNKNOWN")
+            echo "审查结果: $VERDICT"
+            [ "$VERDICT" = "PASS" ] && echo "✅ 修复通过" || { echo "❌ 修复未通过"; exit 1; }
+
   "crontab: 20 6 * * *":
     # 每日促销监控（每日 06:20 Asia/Shanghai，与原 GitHub 22:20 UTC 对齐）
     # 增量语义：state/ 随每轮提交回本仓，monitor 基于上次状态检测促销变化并增量告警
