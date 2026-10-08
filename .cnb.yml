@@ -13,7 +13,11 @@ main:
         - https://cnb.cool/xuerui911-mirror/crawl-secrets/-/blob/main/env.yml
       stages:
         - name: install-deps
-          script: pip install -r requirements.txt 2>/dev/null || true
+          script: |
+            python -m pip install --disable-pip-version-check -r requirements.txt || true
+            # pytest 是 push CI 测试闸的执行器，多数仓 requirements.txt 未声明它；
+            # 缺失时 `python -m pytest` 直接 127，push 流水线从未真正跑过测试。
+            python -m pytest --version >/dev/null 2>&1 || python -m pip install --disable-pip-version-check pytest
         - name: 推送代码到GitLab
           script: |
             if [ -z "$GITLAB_TOKEN" ]; then
@@ -34,8 +38,10 @@ main:
             fi
         - name: pytest
           script: |
-            python -m pytest -q 2>&1 | tee _test_result_.txt
-            rc=${PIPESTATUS[0]}
+            # 同上：PIPESTATUS 在 sh(dash) 下 Bad substitution(127)，改 POSIX 子 shell 取码 + tee 保活
+            rm -f _pytest_rc_.txt
+            ( python -m pytest -q 2>&1; echo $? > _pytest_rc_.txt ) | tee _test_result_.txt
+            rc=$(cat _pytest_rc_.txt)
             echo "PYTEST_EXIT=$rc" >> _stage_context_.env
             # 此前退出码取 tee 的 0，测试失败从不使流水线变红（结构性假绿），现诚实穿透
             exit "$rc"
@@ -482,8 +488,9 @@ main:
             find . -name '*.protected_backup' -delete
         - name: 验证-pytest
           script: |
-            python -m pytest -q 2>&1 | tee _test_after_fix_.txt
-            rc=${PIPESTATUS[0]}
+            rm -f _pytest_rc_after_.txt
+            ( python -m pytest -q 2>&1; echo $? > _pytest_rc_after_.txt ) | tee _test_after_fix_.txt
+            rc=$(cat _pytest_rc_after_.txt)
             if [ "$rc" -eq 0 ]; then echo "PYTEST_VALIDATE=PASS" >> _fix_report_.md; else echo "PYTEST_VALIDATE=FAIL" >> _fix_report_.md; fi
             echo "PYTEST_EXIT_AFTER=$rc" >> _stage_context_.env
         - name: 审查-NPC代码审查
