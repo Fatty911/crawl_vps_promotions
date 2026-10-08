@@ -393,7 +393,7 @@ def fetch_target(
     request_fn: Any,
     browser_fn: Any,
 ) -> TargetResult:
-    checked_at = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    checked_at = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     requested = request_fn(target.url)
     if not target_url_allowed(target, requested.final_url):
         return TargetResult(
@@ -454,7 +454,7 @@ def crawl_targets(
             return TargetResult(
                 target, "blocked", None, None, target.url, "circuit",
                 "provider_circuit_open", 0, 0,
-                dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+                dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
             )
         def limited_request(url: str) -> HTTPFetch:
             with request_limiter.slot(url):
@@ -479,7 +479,7 @@ def crawl_targets(
             return TargetResult(
                 target, "error", None, None, target.url, "requests",
                 f"exception:{type(exc).__name__}", 1, 0,
-                dt.datetime.now(dt.UTC).isoformat(timespec="seconds"),
+                dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
             )
 
     scheduled = prioritize_targets(targets)
@@ -862,7 +862,7 @@ def build_public_data(
         event_id = row.get("event_id")
         if observed_at and event_id:
             history_rows.append(dict(row, observed_at=observed_at))
-    now = max((result.checked_at for result in results), default=dt.datetime.now(dt.UTC).isoformat())
+    now = max((result.checked_at for result in results), default=dt.datetime.now(dt.timezone.utc).isoformat())
     history = merge_history_events(history_rows, prices, now=now)
     return {
         "status": statuses,
@@ -1887,7 +1887,7 @@ def _browser_diag(
 
 
 def _offline_results(targets: list[PlanTarget]) -> list[TargetResult]:
-    checked_at = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    checked_at = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     return [
         TargetResult(
             target, "blocked", None, None, target.url, "offline",
@@ -1997,7 +1997,7 @@ def main() -> int:
         passed = structure_gate(args.site_dir, [target.id for target in targets])
         print(json.dumps({"structure_gate": "pass" if passed else "fail"}))
         return 0 if passed else 1
-    started_at = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    started_at = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     results = (
         crawl_targets(targets, browser_fn=browser_fetch)
         if args.live
@@ -2017,7 +2017,7 @@ def main() -> int:
         mode=mode,
     )
     evidence = build_live_evidence(results, mode=mode)
-    finished_at = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    finished_at = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     envelope = build_batch_envelope(
         public,
         targets,

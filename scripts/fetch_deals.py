@@ -220,7 +220,7 @@ def parse_feed(source_key: str, raw: str, *, now: str) -> list[dict[str, Any]]:
 
 
 def build_deals(*, site_dir: Path) -> dict[str, Any]:
-    now = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     entries: list[dict[str, Any]] = []
     errors: dict[str, str] = {}
     for source_key, feed in FEEDS.items():

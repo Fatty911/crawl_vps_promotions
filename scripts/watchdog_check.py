@@ -74,7 +74,7 @@ def check_stuck(runs_path: Path, repo: str, stuck_minutes: int) -> None:
     except (OSError, json.JSONDecodeError) as exc:
         print(f"cannot read runs: {exc}", file=sys.stderr)
         return
-    now = dt.datetime.now(dt.UTC)
+    now = dt.datetime.now(dt.timezone.utc)
     for run in runs:
         if run.get("status") != "in_progress":
             continue
@@ -123,7 +123,7 @@ def check_freshness(repo: str, freshness_hours: int, pages_url: str) -> None:
         upsert_alert(repo, "pages-manifest-invalid", "线上 batch.json 缺少 finished_at")
         return
     finished_dt = dt.datetime.fromisoformat(str(finished).replace("Z", "+00:00"))
-    age = (dt.datetime.now(dt.UTC) - finished_dt).total_seconds() / 3600
+    age = (dt.datetime.now(dt.timezone.utc) - finished_dt).total_seconds() / 3600
     if age > freshness_hours:
         upsert_alert(
             repo,

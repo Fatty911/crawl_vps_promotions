@@ -51,12 +51,49 @@ def _require_public_base(base_url: str) -> str:
     return parsed.geturl()
 
 
+def _web_excluded_files(files: object) -> dict:
+    # 2026-08-11 用户规则：web/ 前端文件允许两次 monitor 构建间漂移（pages-deploy 独立部署），
+    # data/ 与核心字段必须严格一致。manifest 的 files 比较据此排除 web/ 前缀条目。
+    return {
+        str(name): meta
+        for name, meta in (files or {}).items()
+        if not str(name).startswith("web/")
+    }
+
+
 def compare_manifests(expected: dict, actual: dict) -> list[str]:
-    return [
+    mismatches = [
         field
-        for field in ("schema_version", "batch_id", "source_sha", "mode", "run_id", "run_attempt", "files")
+        for field in ("schema_version", "batch_id", "source_sha", "mode", "run_id", "run_attempt")
         if expected.get(field) != actual.get(field)
     ]
+    if _web_excluded_files(expected.get("files")) != _web_excluded_files(actual.get("files")):
+        mismatches.append("files(web-excluded)")
+    return mismatches
+
+
+def verify_prices(base_url: str, expected: dict) -> None:
+    # live prices.json 必须逐任务命中 expected 的 amount/period/availability；
+    # currency 允许 EUR/USD 等价（Contabo 按访客区域serve等价价格）；促销变化必须 FAIL。
+    live_rows = json.loads(_get(urljoin(base_url.rstrip("/") + "/", "data/prices.json")))
+    live = {str(row.get("task_id")): row for row in live_rows}
+    missing = [task_id for task_id in expected if task_id not in live]
+    if missing:
+        raise ValueError(f"missing tasks: {sorted(missing)}")
+    for task_id, want in expected.items():
+        row = live[task_id]
+        allowed = want["currency"]
+        allowed = allowed if isinstance(allowed, list) else [allowed]
+        if row.get("currency") not in allowed:
+            raise ValueError(
+                f"{task_id}:currency={row.get('currency')}!= {allowed}"
+            )
+        if row.get("amount") != want["amount"]:
+            raise ValueError(f"{task_id}:amount={row.get('amount')}!= {want['amount']}")
+        if row.get("billing_period") != want["billing_period"]:
+            raise ValueError(f"{task_id}:billing_period={row.get('billing_period')}!= {want['billing_period']}")
+        if row.get("availability") != want["availability"]:
+            raise ValueError(f"{task_id}:availability={row.get('availability')}!= {want['availability']}")
 
 
 def _get(url: str) -> bytes:

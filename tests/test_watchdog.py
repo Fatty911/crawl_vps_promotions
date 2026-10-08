@@ -30,7 +30,7 @@ def test_watchdog_workflow_is_scheduled_and_read_only():
 
 
 def _stuck_run(id_: int, minutes_ago: int) -> dict:
-    updated = (dt.datetime.now(dt.UTC) - dt.timedelta(minutes=minutes_ago)).isoformat()
+    updated = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=minutes_ago)).isoformat()
     return {"id": id_, "status": "in_progress", "updated_at": updated, "head_sha": "a" * 40}
 
 
@@ -88,7 +88,7 @@ def test_freshness_reads_batch_json(monkeypatch, tmp_path):
 
     manifest = {"batch_id": "crawl_vps_promotions:1:1", "schema_version": 4}
     batch = {"batch_id": "crawl_vps_promotions:1:1",
-             "finished_at": dt.datetime.now(dt.UTC).isoformat()}
+             "finished_at": dt.datetime.now(dt.timezone.utc).isoformat()}
 
     class R:
         def __init__(self, url):
@@ -115,7 +115,7 @@ def test_freshness_stale_alert(monkeypatch):
     import urllib.request as ur
 
     manifest = {"batch_id": "crawl_vps_promotions:1:1"}
-    old = (dt.datetime.now(dt.UTC) - dt.timedelta(hours=30)).isoformat()
+    old = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=30)).isoformat()
     batch = {"batch_id": "crawl_vps_promotions:1:1", "finished_at": old}
 
     class R:
