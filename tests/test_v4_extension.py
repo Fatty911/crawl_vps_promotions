@@ -82,9 +82,10 @@ def test_value_score_bounds_and_none():
 def test_value_score_in_status_output():
     # Run a fixture round and confirm value_score appears in status rows.
     import subprocess
+    import sys
 
     result = subprocess.run(
-        ["python", "-m", "vps_monitor.monitor", "--output"],
+        [sys.executable, "-m", "vps_monitor.monitor", "--output"],
         cwd=ROOT, capture_output=True, text=True, timeout=300,
     )
     assert result.returncode == 0, result.stderr[-1000:]
