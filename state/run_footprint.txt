@@ -1,11 +1,11 @@
-at_utc=2026-10-08T22:30:32Z
-head=297cd490a429c7598f39c93c6197678f39084e03
+at_utc=2026-10-09T17:54:11Z
+head=9c1c7e1cb29610718fe920c41686e2b2d3940206
 cwd=/workspace
-top_dirs=['.git', '.githooks', '.github', '.pytest_cache', 'docs', 'scripts', 'site', 'state', 'tests', 'vps_monitor', 'web']
+top_dirs=['.deals-tmp', '.git', '.githooks', '.github', '.pytest_cache', 'docs', 'scripts', 'site', 'state', 'tests', 'vps_monitor', 'web']
 [腿1 install-deps] deps_imports=全部可导入 playwright=1.49.1 greenlet=3.1.1
-[腿2 pytest前置校验] .pytest_cache=15696B _test_result_=缺失或空
-[腿3 获取线上发布基线] site/data/price_history.json=缺失或空
-[腿4 促销监控] data_raw_files=-1 site_files=0 local_site_index=缺失或空 local_site_manifest=缺失或空
-[持久状态] state_checkpoint=1157B state_history=94427B
+[腿2 pytest前置校验] .pytest_cache=18548B _test_result_=缺失或空
+[腿3 获取线上发布基线] site/data/price_history.json=116376B
+[腿4 促销监控] data_raw_files=-1 site_files=15 local_site_index=3846B local_site_manifest=1996B
+[持久状态] state_checkpoint=1157B state_history=116377B
 [出口探测] 商店源=URLError pages_dev=HTTP 200
 live_vps2={"date": null, "rowCount": null, "updatedAt": null, "source_sha": "ef2ffab21cdf5b57ea1bd65251dc88c5b70edf7a", "run_id": "cnb-20261008030451=cnb-20261008030451", "batch_id": "crawl_vps_promotions:cnb-20261008030451=cnb-20261008030451:1"}
