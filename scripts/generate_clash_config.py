@@ -71,7 +71,7 @@ class ClashConfigGenerator:
                     "User-Agent": SUBSCRIPTION_USER_AGENT,
                     "Accept": "text/plain,application/yaml,application/json,*/*",
                 },
-                timeout=30,
+                timeout=120,
             )
             response.raise_for_status()
         except requests.RequestException as exc:
