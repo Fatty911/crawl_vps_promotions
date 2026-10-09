@@ -1,1 +1,0 @@
-{"vps_product_quality_gate": "pass"}
