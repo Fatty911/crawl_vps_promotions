@@ -123,13 +123,29 @@ main:
               MODE="debug小批量"
               echo "DEBUG_MODE=true: 调试模式小批量抓取"
             fi
-            export GITHUB_RUN_ID="${CNB_BUILD_SN:-cnb-$(date +%Y%m%d%H%M%S)}"="${CNB_BUILD_SN:-cnb-$(date +%Y%m%d%H%M%S)}"
+            export GITHUB_RUN_ID="${CNB_BUILD_ID:-cnb-$(date +%Y%m%d%H%M%S)}"
             export GITHUB_RUN_ATTEMPT="1"
             echo "run identity: $GITHUB_RUN_ID"
-            HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= python -m vps_monitor.monitor --live --output
+            HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= python -u scripts/run_with_heartbeat.py --interval 60 -- python -u -m vps_monitor.monitor --live --output
         - name: 结构门禁校验
           script: |
             python -m vps_monitor.monitor --structure-gate
+        - name: 商品质量门禁
+          script: |
+            set -e
+            # 对齐 GitHub vps-monitor.yml:175 product_gate（--quality-gate --site-dir）：上一步已逐文件比对
+            # 线上与本地 manifest 的 sha256，故对 site/ 跑门禁与 GitHub 对 deployed-site 跑等价。
+            # 输出 tee 落 state/（回推进仓）：CNB 日志读不到，门禁拒绝原因是唯一观测面
+            #（sn=cnb-88n 实证：门禁首次真跑 375ms 红但无任何留痕无法归因）。tee 保活 +
+            # 失败仍红（质量门禁的硬失败语义不能观测化——它拦的是数据质量）。
+            rm -f state/quality_gate.rc
+            ( set +e; python -m vps_monitor.monitor --quality-gate --site-dir site 2>&1; echo $? > state/quality_gate.rc ) | tee state/quality_gate.txt
+            exit "$(cat state/quality_gate.rc)"
+        - name: 推送数据到GitHub Release
+          timeout: 25m
+          script: |
+            set -e
+            python scripts/publish_github_release.py --site-dir site --repo Fatty911/crawl_vps_promotions --workflow cnb-pages.yml
         - name: 发布到Cloudflare Pages
           image: node:22
           script: |
@@ -163,6 +179,18 @@ main:
               exit 1
             fi
             set -e
+            # Codeberg blocks shared CNB egress; validate a fresh proxy before push.
+            pkill -x mihomo || true
+            unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
+            : > /tmp/codeberg-proxy.env
+            python scripts/setup_proxy_runtime.py --github-env /tmp/codeberg-proxy.env --test-url https://codeberg.org
+            sed 's/^\([A-Za-z_][A-Za-z0-9_]*\)=/export \1=/' /tmp/codeberg-proxy.env > /tmp/codeberg-proxy.sh
+            . /tmp/codeberg-proxy.sh
+            if [ "${PROXY_ENABLED:-false}" != "true" ] || [ -z "${HTTPS_PROXY:-}" ]; then
+              echo "Codeberg proxy unavailable; refusing direct push"
+              exit 1
+            fi
+            curl --fail --silent --show-error --location --proxy "$HTTPS_PROXY" --connect-timeout 20 --max-time 60 https://codeberg.org -o /dev/null
             W=$(mktemp -d)
             cp -r site/. "$W/"
             printf '%s\n' 'vps3.jiucai.eu.org' > "$W/.domains"
@@ -222,22 +250,6 @@ main:
             else
               echo "⚠️ VERIFY=mismatch（详见上方与 state/verify_progress.txt；发布正确性由部署命令+双门禁背书，此腿降级为观测）"
             fi
-        - name: 商品质量门禁
-          script: |
-            set -e
-            # 对齐 GitHub vps-monitor.yml:175 product_gate（--quality-gate --site-dir）：上一步已逐文件比对
-            # 线上与本地 manifest 的 sha256，故对 site/ 跑门禁与 GitHub 对 deployed-site 跑等价。
-            # 输出 tee 落 state/（回推进仓）：CNB 日志读不到，门禁拒绝原因是唯一观测面
-            #（sn=cnb-88n 实证：门禁首次真跑 375ms 红但无任何留痕无法归因）。tee 保活 +
-            # 失败仍红（质量门禁的硬失败语义不能观测化——它拦的是数据质量）。
-            rm -f state/quality_gate.rc
-            ( set +e; python -m vps_monitor.monitor --quality-gate --site-dir site 2>&1; echo $? > state/quality_gate.rc ) | tee state/quality_gate.txt
-            exit "$(cat state/quality_gate.rc)"
-        - name: 推送数据到GitHub Release
-          timeout: 25m
-          script: |
-            set -e
-            python scripts/publish_github_release.py --site-dir site --repo Fatty911/crawl_vps_promotions --workflow cnb-pages.yml
       endStages:
         - name: 回推增量状态与运行足迹
           script: |
@@ -527,13 +539,29 @@ main:
             # GitHub 原链路每轮有唯一 GITHUB_RUN_ID，manifest 的 batch/run 标识因此逐轮可区分；
             # CNB 上没有该变量时 monitor 兜底恒 local —— 09-30 实证这会让相邻两轮（同 HEAD）的
             # 线上验收无法区分「旧轮缓存未传播」与「真不一致」（mismatch: files）。注入构建唯一标识。
-            export GITHUB_RUN_ID="${CNB_BUILD_SN:-cnb-$(date +%Y%m%d%H%M%S)}"
+            export GITHUB_RUN_ID="${CNB_BUILD_ID:-cnb-$(date +%Y%m%d%H%M%S)}"
             export GITHUB_RUN_ATTEMPT="1"
             echo "run identity: $GITHUB_RUN_ID"
-            HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= python -m vps_monitor.monitor --live --output
+            HTTP_PROXY= HTTPS_PROXY= ALL_PROXY= python -u scripts/run_with_heartbeat.py --interval 60 -- python -u -m vps_monitor.monitor --live --output
         - name: 结构门禁校验
           script: |
             python -m vps_monitor.monitor --structure-gate
+        - name: 商品质量门禁
+          script: |
+            set -e
+            # 对齐 GitHub vps-monitor.yml:175 product_gate（--quality-gate --site-dir）：上一步已逐文件比对
+            # 线上与本地 manifest 的 sha256，故对 site/ 跑门禁与 GitHub 对 deployed-site 跑等价。
+            # 输出 tee 落 state/（回推进仓）：CNB 日志读不到，门禁拒绝原因是唯一观测面
+            #（sn=cnb-88n 实证：门禁首次真跑 375ms 红但无任何留痕无法归因）。tee 保活 +
+            # 失败仍红（质量门禁的硬失败语义不能观测化——它拦的是数据质量）。
+            rm -f state/quality_gate.rc
+            ( set +e; python -m vps_monitor.monitor --quality-gate --site-dir site 2>&1; echo $? > state/quality_gate.rc ) | tee state/quality_gate.txt
+            exit "$(cat state/quality_gate.rc)"
+        - name: 推送数据到GitHub Release
+          timeout: 25m
+          script: |
+            set -e
+            python scripts/publish_github_release.py --site-dir site --repo Fatty911/crawl_vps_promotions --workflow cnb-pages.yml
         - name: 发布到Cloudflare Pages
           image: node:22
           script: |
@@ -567,6 +595,18 @@ main:
               exit 1
             fi
             set -e
+            # Codeberg blocks shared CNB egress; validate a fresh proxy before push.
+            pkill -x mihomo || true
+            unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
+            : > /tmp/codeberg-proxy.env
+            python scripts/setup_proxy_runtime.py --github-env /tmp/codeberg-proxy.env --test-url https://codeberg.org
+            sed 's/^\([A-Za-z_][A-Za-z0-9_]*\)=/export \1=/' /tmp/codeberg-proxy.env > /tmp/codeberg-proxy.sh
+            . /tmp/codeberg-proxy.sh
+            if [ "${PROXY_ENABLED:-false}" != "true" ] || [ -z "${HTTPS_PROXY:-}" ]; then
+              echo "Codeberg proxy unavailable; refusing direct push"
+              exit 1
+            fi
+            curl --fail --silent --show-error --location --proxy "$HTTPS_PROXY" --connect-timeout 20 --max-time 60 https://codeberg.org -o /dev/null
             W=$(mktemp -d)
             cp -r site/. "$W/"
             printf '%s\n' 'vps3.jiucai.eu.org' > "$W/.domains"
@@ -625,22 +665,6 @@ main:
             else
               echo "⚠️ VERIFY=mismatch（详见上方与 state/verify_progress.txt；发布正确性由部署命令+双门禁背书，此腿降级为观测）"
             fi
-        - name: 商品质量门禁
-          script: |
-            set -e
-            # 对齐 GitHub vps-monitor.yml:175 product_gate（--quality-gate --site-dir）：上一步已逐文件比对
-            # 线上与本地 manifest 的 sha256，故对 site/ 跑门禁与 GitHub 对 deployed-site 跑等价。
-            # 输出 tee 落 state/（回推进仓）：CNB 日志读不到，门禁拒绝原因是唯一观测面
-            #（sn=cnb-88n 实证：门禁首次真跑 375ms 红但无任何留痕无法归因）。tee 保活 +
-            # 失败仍红（质量门禁的硬失败语义不能观测化——它拦的是数据质量）。
-            rm -f state/quality_gate.rc
-            ( set +e; python -m vps_monitor.monitor --quality-gate --site-dir site 2>&1; echo $? > state/quality_gate.rc ) | tee state/quality_gate.txt
-            exit "$(cat state/quality_gate.rc)"
-        - name: 推送数据到GitHub Release
-          timeout: 25m
-          script: |
-            set -e
-            python scripts/publish_github_release.py --site-dir site --repo Fatty911/crawl_vps_promotions --workflow cnb-pages.yml
       endStages:
         - name: 回推增量状态与运行足迹
           script: |

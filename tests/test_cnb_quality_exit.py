@@ -33,3 +33,19 @@ def test_quality_acceptance_survives_tee():
             result = subprocess.run(['sh', '-c', 'python() { echo accepted; return 0; };\n' + script],
                                     cwd=temp, capture_output=True, text=True)
             assert result.returncode == 0, result.stderr
+
+
+def test_quality_precedes_every_publication_leg():
+    data = yaml.safe_load((Path(__file__).parents[1] / '.cnb.yml').read_text(encoding='utf-8'))
+    checked = 0
+    for jobs in data['main'].values():
+        if not isinstance(jobs, list):
+            continue
+        for job in jobs:
+            names = [s.get('name') for s in job.get('stages', [])]
+            if '商品质量门禁' not in names:
+                continue
+            for publish in ['推送数据到GitHub Release','发布到Cloudflare Pages','发布到Codeberg Pages']:
+                assert names.index('商品质量门禁') < names.index(publish)
+            checked += 1
+    assert checked == 2
