@@ -6,7 +6,7 @@ name: pages-deploy (frontend-only)
 
 # Pages，不跑爬取/merge/质量门，不被 monitor 链阻塞。数据（data/）取自
 
-# 最近一次成功的 monitor 构建产物（pages-payload-* artifact），web/ 用
+# 最新完整 verified CNB Release，web/ 用
 
 # 本次提交的最新版本覆盖（monitor 发布时前端文件拍平到 site 根目录，
 
@@ -76,69 +76,13 @@ jobs:
 
           ref: ${{ env.SOURCE_SHA }}
 
-      - name: Find latest successful monitor build
-
-        id: find
-
-        uses: actions/github-script@v8
-
-        with:
-
-          script: |
-
-            const { data: runs } = await github.rest.actions.listWorkflowRuns({
-
-              owner: context.repo.owner, repo: context.repo.repo,
-
-              workflow_id: 'vps-monitor.yml', branch: 'main', status: 'success', per_page: 1,
-
-            });
-
-            if (!runs.workflow_runs || runs.workflow_runs.length === 0) {
-
-              core.setFailed('no successful monitor run found; run monitor first');
-
-              return;
-
-            }
-
-            const runId = runs.workflow_runs[0].id;
-
-            const { data: arts } = await github.rest.actions.listWorkflowRunArtifacts({
-
-              owner: context.repo.owner, repo: context.repo.repo, run_id: runId,
-
-            });
-
-            const art = arts.artifacts.find((a) => a.name.startsWith('pages-payload-'));
-
-            if (!art) {
-
-              core.setFailed(`no pages-payload artifact in monitor run ${runId}`);
-
-              return;
-
-            }
-
-            core.setOutput('monitor_run', String(runId));
-
-            core.setOutput('payload_artifact', art.name);
-
-      - name: Download latest monitor payload (data + previous web)
-
-        uses: actions/download-artifact@v5
-
-        with:
-
-          name: ${{ steps.find.outputs.payload_artifact }}
-
-          path: site
-
-          github-token: ${{ github.token }}
-
-          repository: ${{ github.repository }}
-
-          run-id: ${{ steps.find.outputs.monitor_run }}
+      - name: Download latest verified CNB payload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          python scripts/download_verified_release.py --repo "$GITHUB_REPOSITORY" --dir release-files
+          python scripts/prepare_cnb_pages.py --archive release-files/verified-site.zip --manifest release-files/manifest.json --site site
 
       - name: Verify payload integrity
 
@@ -150,7 +94,20 @@ jobs:
 
         run: |
 
-          cp -r web/* site/
+          set -e
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+          for source in Path("web").rglob("*"):
+              relative = source.relative_to("web")
+              if relative.parts[0] == "data" or relative.as_posix() in ("manifest.json", "audit.json"):
+                  continue
+              if source.is_file():
+                  target = Path("site") / relative
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  shutil.copyfile(source, target)
+          PY
+          cmp release-files/manifest.json site/data/manifest.json
 
       - name: Frontend sanity checks
 

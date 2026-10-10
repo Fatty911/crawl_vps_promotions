@@ -2,6 +2,7 @@ import json
 import subprocess
 import sys
 from pathlib import Path
+import yaml
 
 from vps_monitor.audit import (
     audit_envelope,
@@ -298,7 +299,7 @@ def test_verify_prices_data_semantic_gate(monkeypatch):
 
 def test_pages_deploy_frontend_only_workflow():
     """2026-08-11 用户要求：前端展示改动拆成独立部署路径，不被爬取/merge
-    阻塞。pages-deploy.yml 只响应 web/**，复用最新 monitor payload 的
+    阻塞。pages-deploy.yml 只响应 web/**，复用最新完整 verified Release 的
     data/，覆盖 web/ 后独立部署；与 monitor deploy 共用 pages-deploy
     concurrency 组串行。"""
     wf = Path(__file__).parents[1] / ".github" / "workflows" / "pages-deploy.yml"
@@ -306,10 +307,21 @@ def test_pages_deploy_frontend_only_workflow():
     assert "name: pages-deploy (frontend-only)" in text
     assert "paths:" in text and "web/**" in text
     assert "concurrency:" in text and "group: pages-deploy" in text
-    assert "actions/github-script@v8" in text
-    assert "actions/download-artifact@v5" in text
-    assert "pages-payload-" in text
-    assert "cp -r web/* site/" in text
+    workflow = yaml.safe_load(text)
+    steps = workflow["jobs"]["build"]["steps"]
+    download = next(step["run"] for step in steps if step["name"] == "Download latest verified CNB payload")
+    assert 'python scripts/download_verified_release.py --repo "$GITHUB_REPOSITORY" --dir release-files' in download
+    assert '--archive release-files/verified-site.zip --manifest release-files/manifest.json --site site' in download
+    assert "data-latest" not in download
+    assert "|| true" not in download
+    assert "set -e" in download
+    names = [step.get("name", "") for step in steps]
+    assert names.index("Download latest verified CNB payload") < names.index("Verify payload integrity")
+    assert names.index("Verify payload integrity") < names.index("Overlay this commit's web/ (frontend-only change)")
+    assert "npc:go" not in text and "--live" not in text
+    assert 'source.relative_to("web")' in text
+    assert 'relative.parts[0] == "data"' in text
+    assert "cmp release-files/manifest.json site/data/manifest.json" in text
     assert "actions/upload-pages-artifact@v4" in text
     assert "actions/deploy-pages@v4" in text
     # 前端验证：web/ 文件哈希与线上精确一致
@@ -320,3 +332,46 @@ def test_pages_deploy_frontend_only_workflow():
     mtext = pages.read_text(encoding="utf-8")
     assert mtext.count("group: pages-deploy") == 1
     assert "concurrency:" in mtext
+    cnb = yaml.safe_load((wf.parent / "cnb-pages.yml").read_text(encoding="utf-8"))
+    assert workflow["concurrency"] == cnb["concurrency"] == {"group": "pages-deploy", "cancel-in-progress": False}
+
+
+def test_frontend_overlay_preserves_verified_payload(tmp_path):
+    workflow = yaml.safe_load((Path(__file__).parents[1] / ".github/workflows/pages-deploy.yml").read_text(encoding="utf-8"))
+    overlay = next(step["run"] for step in workflow["jobs"]["build"]["steps"]
+                   if step["name"] == "Overlay this commit's web/ (frontend-only change)")
+    code = overlay.split("python - <<'PY'\n", 1)[1].split("\nPY", 1)[0]
+    originals = {"site/data/status.json": b'verified status', "site/data/manifest.json": b'verified manifest',
+                 "site/manifest.json": b'verified root', "site/audit.json": b'verified audit'}
+    files = {**originals, "site/index.html": b'old', "web/index.html": b'new',
+             "web/data/status.json": b'unverified', "web/data/manifest.json": b'unverified',
+             "web/manifest.json": b'unverified', "web/audit.json": b'unverified'}
+    for name, body in files.items():
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(body)
+    result = subprocess.run([sys.executable, "-c", code], cwd=tmp_path, capture_output=True,
+                            text=True, encoding="utf-8")
+    assert result.returncode == 0, result.stderr
+    for name, body in originals.items():
+        assert (tmp_path / name).read_bytes() == body
+    assert (tmp_path / "site/index.html").read_bytes() == b'new'
+
+
+def test_verified_release_download_failure_cannot_use_existing_bundle(tmp_path):
+    workflow = yaml.safe_load((Path(__file__).parents[1] / ".github/workflows/pages-deploy.yml").read_text(encoding="utf-8"))
+    download = next(step["run"] for step in workflow["jobs"]["build"]["steps"]
+                    if step["name"] == "Download latest verified CNB payload")
+    mock = '''
+    GITHUB_REPOSITORY=Fatty911/crawl_vps_promotions
+    python() {
+      case "$*" in
+        *download_verified_release.py*) echo download >> commands.txt; return 7 ;;
+        *) echo reused_old_bundle >> commands.txt; return 0 ;;
+      esac
+    }
+    '''
+    result = subprocess.run(["sh", "-c", mock + download], cwd=tmp_path, capture_output=True,
+                            text=True, encoding="utf-8")
+    assert result.returncode == 7, result.stderr
+    assert (tmp_path / "commands.txt").read_text().splitlines() == ["download"]
