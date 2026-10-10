@@ -1,11 +1,11 @@
-at_utc=2026-10-09T18:46:10Z
-head=044d938b3be859b4963e2bf214a07840e18a7f9a
+at_utc=2026-10-09T22:52:58Z
+head=b097cd6c4ebf34f3875705c032c773a14e8d8c75
 cwd=/workspace
 top_dirs=['.deals-tmp', '.git', '.githooks', '.github', '.pytest_cache', '.wrangler', 'docs', 'scripts', 'site', 'state', 'tests', 'vps_monitor']
 [腿1 install-deps] deps_imports=全部可导入 playwright=1.49.1 greenlet=3.1.1
 [腿2 pytest前置校验] .pytest_cache=19935B _test_result_=缺失或空
-[腿3 获取线上发布基线] site/data/price_history.json=138326B
+[腿3 获取线上发布基线] site/data/price_history.json=155212B
 [腿4 促销监控] data_raw_files=-1 site_files=15 local_site_index=3846B local_site_manifest=1956B
-[持久状态] state_checkpoint=1137B state_history=138327B
+[持久状态] state_checkpoint=1137B state_history=155213B
 [出口探测] 商店源=URLError pages_dev=HTTP 200
-live_vps2={"date": null, "rowCount": null, "updatedAt": null, "source_sha": "044d938b3be859b4963e2bf214a07840e18a7f9a", "run_id": "cnb-s93-1k4gube3i", "batch_id": "crawl_vps_promotions:cnb-s93-1k4gube3i:1"}
+live_vps2={"date": null, "rowCount": null, "updatedAt": null, "source_sha": "b097cd6c4ebf34f3875705c032c773a14e8d8c75", "run_id": "cnb-jkj-1k4hc11lt", "batch_id": "crawl_vps_promotions:cnb-jkj-1k4hc11lt:1"}
