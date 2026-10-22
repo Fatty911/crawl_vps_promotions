@@ -9,17 +9,17 @@ Pages 只把 `schema_version: 4` 且 `mode: live` 的批次当作当前套餐。
 - `batch_id`: `crawl_vps_promotions:<run_id>:<run_attempt>`
 - `run_id`、`run_attempt`、`source_sha`、`config_sha256`
 - `started_at`、`finished_at`、`mode`、`baseline_batch_id`
-- `expected_tasks: 14`
+- `expected_tasks`: 本轮 `providers.yaml` 经校验生成的任务集合大小（`len(targets)`）
 - `statuses`、`prices`、守恒 `summary`
 - `evidence_sha256`、`audit_status`
 
-`source_sha` 必须为 40 位小写十六进制，配置和证据摘要必须为 64 位 SHA-256。五类 outcome 的总和必须精确等于 14。
+`source_sha` 必须为 40 位小写十六进制，配置和证据摘要必须为 64 位 SHA-256。五类 outcome 的总和必须精确等于 `expected_tasks`；状态任务 ID 必须唯一且与配置生成的任务 ID 集合完全一致。任务集合变更仍受 `config_revision` 和显式退休列表约束，不得静默增加或丢失任务。
 
 ## 脱敏运行证据
 
 `site/data/live-evidence.json` 是面向诊断的最小证据文件，顶层固定为 `schema_version`、`mode`、`tasks`、`summary`。每个 `tasks` 元素固定包含 `task_id`、`provider`、`http_status`、`final_url`、`method`、`outcome`、`block_reason`、`attempts`、`latency_ms`。
 
-`final_url` 只允许 `http(s)://hostname` origin；原因码只允许有限 ASCII 字符集。不会发布凭据、端口、路径、query、fragment、正文、headers、cookies 或代理节点名。`summary` 守恒任务数、服务商数、五类 outcome 和四类 method，且任务顺序必须与 `providers.yaml` 的 14 项一致。`batch.json.evidence_sha256` 必须等于该文件的规范化 SHA-256。
+`final_url` 只允许 `http(s)://hostname` origin；原因码只允许有限 ASCII 字符集。不会发布凭据、端口、路径、query、fragment、正文、headers、cookies 或代理节点名。`summary` 守恒任务数、服务商数、五类 outcome 和四类 method，且任务顺序必须与 `providers.yaml` 生成的完整任务集合一致。`batch.json.evidence_sha256` 必须等于该文件的规范化 SHA-256。
 
 ## Status 与 offer
 
