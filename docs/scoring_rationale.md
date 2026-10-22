@@ -1,7 +1,7 @@
 # 厂商可靠性 / 超售 / 性价比评分依据
 
 > 说明：可靠性分与超售等级为**社区口碑 + 用户经验的参考分，非实测数据**。
-> 来源为 LowEndTalk / LowEndBox / NodeSeek 等社区长期共识与用户（Fatty911）实际使用经验。
+> 来源为 LowEndTalk / LowEndBox / NodeSeek 等社区长期共识与维护者实际使用经验。
 > 前端展示时标注"社区参考分"；评分会随社区口碑变化在后续轮次人工校正。
 
 ## 评分字段
@@ -56,3 +56,4 @@ value_score = clamp(1 + 9 × (log10(raw + 0.1) + 1) / 2, 1, 10)，保留 1 位�
   `REQUEST_PATTERNS`、`OFFER_PATTERNS` 见 `scripts/fetch_deals.py`）。
 - **AFF 合规**：只发布文章原文 URL，不处理/不发布 affiliate 参数；
   情报流不进入产品门，不构成购买建议。
+
